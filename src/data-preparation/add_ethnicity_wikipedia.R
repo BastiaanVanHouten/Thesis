@@ -1,8 +1,9 @@
 # Read in dataset ethnicity of wikipedia
-ethnicity_data <- read_csv("data/consolidated_data.csv")
+ethnicity_data <- read_csv("ethnicity_wikipedia_cleaned_vs.csv")
 
-ethnicity_data$Ethnicity <- gsub("List of", "", ethnicity_data$Ethnicity)
-ethnicity_data$Ethnicity <- gsub("actors", "", ethnicity_data$Ethnicity)
+
+
+
 
 ethnicity_data <- subset(ethnicity_data, Name %in% name_actors$primaryName)
 
