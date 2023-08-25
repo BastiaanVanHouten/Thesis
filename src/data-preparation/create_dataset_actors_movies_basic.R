@@ -23,4 +23,4 @@ main_base <- read_csv("gen/data-preparation/temp/main_base.csv")
 
 
 # save dataset
-write_csv(data_actors, paste0('gen/data-preparation/temp/', "actors_movies_base.csv"))
+write_csv(data_actors, paste0('gen/data-preparation/temp/', "four_most_important_actors_imdb.csv"))

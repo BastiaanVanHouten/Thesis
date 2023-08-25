@@ -97,5 +97,6 @@ write.csv(movie_ranks_3000_8660, file = 'modified_dataset.csv', row.names = FALS
 #combining all datasets
 total_movie_ranks <- rbind(movie_ranks_900,dataset_2, dataset )
 
-# Save the total dataset if needed
-write.csv(total_movie_ranks, file = 'movie_ranks.csv', row.names = FALSE)
+
+# Save the dataset
+write_csv(us_production_movies_cleaned, file.path("gen", "data-preparation", "output", "movie_ranks.csv"))
