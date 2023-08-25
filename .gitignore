@@ -1,2 +1,8 @@
-data/
-gen/
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+**data/
+**gen/
+*.csv
+*.csv.gz
