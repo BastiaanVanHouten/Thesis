@@ -84,6 +84,8 @@ print(duplicates)
 # Remove duplicates from the "movie_id" column
 unique_movie_ranks <- total_movie_ranks[!duplicated(total_movie_ranks$movie_id), ]
 
+# remove the second colum
+movie_ranks <- movie_ranks[, -2]
 
 # Save the dataset
 write_csv(unique_movie_ranks, file.path("gen", "data-preparation", "output", "movie_ranks.csv"))
