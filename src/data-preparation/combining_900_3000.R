@@ -2,10 +2,10 @@ library(readr)
 library(tidyr)
 library(dplyr)
 
-movie_ranks_900_1600 <- read_csv("data/scraped/movie_ranks_900_1600.csv")
-movie_ranks_1600_2300 <- read_csv("data/scraped/movie_ranks_1600_2300.csv")
-movie_ranks_2300_3000 <- read_csv("data/scraped/movie_ranks_2300_3000.csv")
-movie_ranks_900_3000_1998_ <- read_csv("data/scraped/movie_ranks_900_3000_1998-.csv")
+movie_ranks_900_1600 <- read_csv("data/scraped/movie_ranks/movie_ranks_900_1600.csv")
+movie_ranks_1600_2300 <- read_csv("data/scraped/movie_ranks/movie_ranks_1600_2300.csv")
+movie_ranks_2300_3000 <- read_csv("data/scraped/movie_ranks//movie_ranks_2300_3000.csv")
+movie_ranks_900_3000_1998_ <- read_csv("data/scraped/movie_ranks/movie_ranks_900_3000_1998-.csv")
 
 ## combining 900 till 3000 
 movie_ranks_900_2300 <- rbind(movie_ranks_900_1600, movie_ranks_1600_2300)

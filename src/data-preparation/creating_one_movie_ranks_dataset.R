@@ -12,7 +12,7 @@ new_column_names <- c("movie_id", format(date_sequence, format = "%Y-%m-%d"))
 # reading 900 as numeric
 # Read the CSV file while converting all columns except the first one to numeric
 movie_ranks_900 <- read_csv(
-    "data/scraped/movie_ranks_0_900.csv",
+    "data/scraped/movie_ranks/movie_ranks_0_900.csv",
     col_types = cols(
         .default = col_number(),  # Set all non-first columns to numeric
         `movie_id` = col_character()  # Replace '1st_column_name' with the actual name of the first column
@@ -49,7 +49,7 @@ names(movie_ranks_900_3000) <- new_column_names
 # reading 3000 -> 8660 as numeric
 # Read the CSV file while converting all columns except the first one to numeric
 movie_ranks_3000_8660 <- read_csv(
-    "data/scraped/movie_ranks_3000_8660.csv",
+    "data/scraped/movie_ranks/movie_ranks_3000_8660.csv",
     col_types = cols(
         .default = col_number(),  # Set all non-first columns to numeric
         `movie_id` = col_character()  # Replace '1st_column_name' with the actual name of the first column
@@ -87,5 +87,12 @@ unique_movie_ranks <- total_movie_ranks[!duplicated(total_movie_ranks$movie_id),
 # remove the second colum
 movie_ranks <- movie_ranks[, -2]
 
+
+movie_ranks_2018_2019 <- read_csv("data/scraped/movie_ranks_2018_2019.csv")
+
+movie_ranks_complete <- rbind(unique_movie_ranks, movie_ranks_2018_2019) 
+
+
+
 # Save the dataset
-write_csv(unique_movie_ranks, file.path("gen", "data-preparation", "output", "movie_ranks.csv"))
+write_csv(movie_ranks_complete, file.path("gen", "data-preparation", "output", "movie_ranks.csv"))

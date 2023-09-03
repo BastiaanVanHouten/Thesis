@@ -8,6 +8,7 @@
 
 library(purrr)
 library(readr)
+library(dplyr)
 
 # List of file names
 file_names <- c("movie_details_OMDB_1000.csv",
@@ -18,7 +19,9 @@ file_names <- c("movie_details_OMDB_1000.csv",
                 "movie_details_OMDB_5000_6000.csv",
                 "movie_details_OMDB_6000_7000.csv",
                 "movie_details_OMDB_7000_8000.csv",
-                "movie_details_OMDB_8000_8660.csv")
+                "movie_details_OMDB_8000_8660.csv",
+                "movie_details_OMDB_1000_1181.csv",
+                "movie_details_OMDB_18_19.csv")
 
 # Function to read CSV with specific column types
 read_csv_with_types <- function(file_path) {
@@ -33,7 +36,7 @@ read_csv_with_types <- function(file_path) {
 }
 
 # Read and combine all CSV files with specific column types
-combined_data <- map_dfr(file_names, ~ read_csv_with_types(paste("data/scraped/", .x, sep = "")))
+combined_data <- map_dfr(file_names, ~ read_csv_with_types(paste("data/scraped/omdb_rankings/", .x, sep = "")))
 
 head(combined_data)
 
