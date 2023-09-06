@@ -44,10 +44,25 @@ head(combined_data)
 # Remove the "Production" column
 combined_data <- select(combined_data, -Production)
 
-# Print the updated dataframe
-head(combined_data)
+
+file_paths <- c("data/scraped/omdb_rankings/movie_details_OMDB_not_done_1000.csv", "data/scraped/omdb_rankings/movie_details_OMDB_not_done_1000_2000.csv", "data/scraped/omdb_rankings/movie_details_OMDB_not_done_2000_3000.csv", "data/scraped/omdb_rankings/movie_details_OMDB_not_done_3000_4000.csv", "data/scraped/omdb_rankings/movie_details_OMDB_not_done_4000_5000.csv", "data/scraped/omdb_rankings/movie_details_OMDB_not_done_5000_6000.csv", "data/scraped/omdb_rankings/movie_details_OMDB_not_done_6000_6023.csv")
+
+# Read all CSV files into a list of data frames
+list_of_data_frames <- lapply(file_paths, function(path) {
+    read_csv(path)
+})
+
+
+# Combine the list of data frames into one data frame
+combined_data_not_done <- do.call(rbind, list_of_data_frames)
+
+
+# Create a list of data frames (replace these with your actual data frames)
+awards_ratings <- rbind(combined_data, combined_data_not_done)
+
+
 
 # Save the dataset
-write_csv(combined_data, file.path("gen", "data-preparation", "temp", "awards_ratings.csv"))
+write_csv(awards_ratings, file.path("gen", "data-preparation", "temp", "awards_ratings.csv"))
 
 
