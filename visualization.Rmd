@@ -1,0 +1,341 @@
+---
+title: "Visualization"
+author: "Bastiaan"
+date: "2023-09-20"
+output: html_document
+---
+
+```{r echo=FALSE }
+# load packages
+library(interactions)
+library(readr)
+library(dplyr)
+library(broom)
+library(ggplot2)
+library(ggpubr)
+library(car)
+
+df <- read_csv("gen/data-preparation/output/thanos_endgame.csv")
+movie
+```
+
+# Let's first check the average ranking per year of the movies
+```{R echo = FALSE}
+ggplot(df, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
+  geom_line(stat = "summary", fun = "mean", fill = "skyblue") +
+  labs(title = "Average Avg_Rank_Third_Year.y by imdb.com_year",
+       x = "imdb.com_year",
+       y = "Average Avg_Rank_Third_Year.y") +
+  theme_minimal()
+
+```
+
+<sub> only possible explanaition that top 250 or etc. is a very difficult to get to. The movies that have been published the more ocmpettive it is to have a movie that keeps remaining popular. 
+
+# This would be the regression of the main analysis
+
+```{r echo = FALSE}
+# Create the main regression model
+model <- lm(Avg_Rank_Third_Year ~ simpson_index + 
+                boxofficemojo.com_openingtheaters + 
+                imdb.com_runtime + mpaa_numeric + 
+                average_budget + 
+                imdb.com_year +
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                imdb.com_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonbookseries + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                Nominee +
+                Winner +
+                the_numbers_com_dirpower_rank +
+                Total_Star_Power+
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
+                Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
+                Horror + Music + Documentary + Western, # Include all genre variables
+            data = df)
+
+
+
+# print model 
+summary(model)
+```
+
+## Result from the regression model : 
+<sub> In this case, the data represents a cross-sectional view of movie rankings and popularity at different points in time, with each observation corresponding to a specific year (e.g., 2001 for movies released in 1998 and 2007 for movies released in 2004).
+
+<sub> While the data does have a time dimension in the sense that it captures movie rankings at different years after their release, it is still considered cross-sectional in nature because each observation corresponds to a single year, and you are examining movies' attributes and performance at a specific moment in time. Cross-sectional data can include information from various time points, but it does not involve tracking individual entities or observations over time. Instead, it provides a snapshot or cross-section of the data at each time point.
+
+<sub> So, it is appropriate to refer to this data as cross-sectional data with a temporal component, where each observation corresponds to a specific year after a movie's release.
+
+<sub> Therefore, a 0.47 for R-squared is fine and we would perfer to use a model with an interecpt eventhough the R squared for the other is higher
+
+
+# Checking for robustness starting with multicollinearity 
+
+```{r}
+
+# Calculate VIF for your linear regression model
+vif_values <- vif(model)
+
+# Print the VIF values
+print(vif_values)
+
+```
+
+<sub> All values are below 10 so no issue
+
+# See if some covariates influence the DV
+
+```{r echo = FALSE}
+# Create the main regression model
+model_covariates_check <- lm(simpson_index ~ 
+                boxofficemojo.com_openingtheaters + 
+                imdb.com_runtime + mpaa_numeric + 
+                average_budget + 
+                imdb.com_year +
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                imdb.com_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonbookseries + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                Nominee +
+                Winner +
+                the_numbers_com_dirpower_rank +
+                Total_Star_Power+
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
+                Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
+                Horror + Music + Documentary + Western, # Include all genre variables
+            data = df)
+
+
+
+# print model 
+summary(model_covariates_check)
+```
+
+<sub> imdb.com_year + , spinoff + ,basedonnovel - , genre action + , genre crime + , genre Mystery - , genre Romance -  , genre Sci Fi + ,  genre musical -, genre history - , genre Horror -, genre Music + . 
+
+```{r echo = FALSE}
+# Filter the data for movies with Music = 1
+music_movies <- df[df$Music == 1, ]
+
+# Display the filtered movies
+head(music_movies$imdb.com_title, n =4)
+```
+
+<sub> music movies are movies such a dirty dancing , all eyez on me, bohemian rapsody
+
+
+# Counting the movies with less than 2 for a ehtnicity
+
+```{r echo = FALSE}
+
+# Count the number of movies for each individual criterion (ignoring missing values)
+count_asian <- sum(df$Total_Assigned_Asian < 2, na.rm = TRUE)
+count_black <- sum(df$Total_Assigned_Black < 2, na.rm = TRUE)
+count_hispanic <- sum(df$Total_Assigned_Hispanic < 2, na.rm = TRUE)
+count_white <- sum(df$Total_Assigned_White < 2, na.rm = TRUE)
+
+count_minorities <- sum(df$Total_Assigned_Asian < 2 & 
+                        df$Total_Assigned_Black < 2 &
+                        df$Total_Assigned_Hispanic < 2, na.rm = TRUE)
+
+# Display the counts for each criterion
+cat("Number of movies with Total_Assigned_Asian < 2:", count_asian, "\n")
+cat("Number of movies with Total_Assigned_Black < 2:", count_black, "\n")
+cat("Number of movies with Total_Assigned_Hispanic < 2:", count_hispanic, "\n")
+cat("Number of movies with Total_Assigned_White < 2:", count_white, "\n")
+cat("Number of movies with Total_Assigned_Minorities < 2:", count_minorities, "\n")
+```
+
+<sub> There are at least 1079 (Asian), 659 (Black), 1048 (Hispanic), white (21) movies that can not get AIR for all ethnicities. Escpeially looking at ASian and Hispanic about halve of the movies does not have AIR only looking at the actors hired not even the content of the movie.299 have less than 2 for all minority groups 
+
+# Year is so important so let's see how diversity has developed over the years 
+```{r echo = FALSE}
+ggplot(df, aes(x = imdb.com_year, y = simpson_index)) +
+  geom_line(stat = "summary", fun = "mean", fill = "skyblue") +
+  labs(title = "Average diversity idex by imdb.com_year",
+       x = "imdb.com_year",
+       y = "Average Diversity") +
+  theme_minimal()
+
+```
+
+<While the acion genre is positivly correlated to the popularity of a movie because it's intercept is negative in the first model. Nevertheless, it is positivly correlated with the diversity of a movie. While the diversity of a movie is negativly correlated with the popularity of a movie. 
+```{r }
+# Calculate the average of df$simpson_index
+average_simpson_index <- mean(df$simpson_index, na.rm = TRUE)
+
+# Print the average
+cat("Average of Simpson Index:", average_simpson_index, "\n")
+```
+
+<sub> the average of the simpson diversity index is 0.3627456
+
+```{r }
+movie_ranks <- read_csv("gen/data-preparation/output/movie_ranks.csv")
+```
+# Going for the Diff in Diff analysis
+<we first removed all ranks for the dates that were before the release of the movies 
+```{r echo = FALSE}
+df$treatment <- ifelse(df$simpson_index > 0.3627456, 1, 0)
+
+# Add the treatment variable and imdb.com_releasedate to movie_ranks
+movie_ranks <- movie_ranks %>%
+  left_join(df %>% select(treatment, imdb.com_imdbid, imdb.com_releasedate), 
+            by = c("Movie_ID" = "imdb.com_imdbid"))
+
+
+# Convert imdb.com_releasedate to Date format (if not already)
+movie_ranks <- movie_ranks %>%
+  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate))
+
+# Filter the dataset to keep only observations where Date is after imdb.com_releasedate
+filtered_movie_ranks <- movie_ranks %>%
+  filter(Date >= imdb.com_releasedate)
+
+filtered_movie_ranks <- filtered_movie_ranks %>%
+  filter(imdb.com_releasedate > 2003)
+
+
+```
+
+# Let's check for outliers
+<we removed a few outliers> 
+```{r echo = FALSE}
+# Calculate z-scores for Rank
+filtered_movie_ranks$z_score <- scale(filtered_movie_ranks$Rank)
+
+# Define a threshold for acceptable z-scores (e.g., within 3 standard deviations)
+threshold <- 30
+
+# Identify outliers
+outliers <- filtered_movie_ranks[abs(filtered_movie_ranks$z_score) > threshold, ]
+
+# Create a filtered dataset without outliers
+filtered_movie_ranks <- filtered_movie_ranks[abs(filtered_movie_ranks$z_score) <= threshold, ]
+
+# Remove the z_score variable as it's no longer needed
+filtered_movie_ranks$z_score <- NULL
+
+```
+
+
+< we are checking for a parallel trend> 
+
+```{r echo = FALSE}
+# Assuming your data frame is named movie_ranks
+
+# Filter the data into treatment and control groups
+treatment_group <- movie_ranks %>%
+  filter(treatment == 1) %>%
+  group_by(Date) %>%
+  summarise(avg_rank = mean(Rank))
+
+
+control_group <- filtered_movie_ranks %>%
+  filter(treatment == 0) %>%
+  group_by(Date) %>%
+  summarise(avg_rank = mean(Rank))
+
+```
+
+```{r}
+# Create the plot with facets
+ggplot(combined_data, aes(x = Date, y = avg_rank, color = group)) +
+  geom_line(size = 1) +
+  labs(title = "Average Ranking Over Time",
+       x = "Date/Year",
+       y = "Average Ranking") +
+  scale_color_manual(values = c("Treatment Group" = "blue", "Control Group" = "red")) +
+  facet_grid(. ~ group) +
+  theme_minimal()
+```
+
+```{r echo = FALSE}
+library(ggplot2)
+
+# Create the plot
+ggplot() +
+  geom_line(data = treatment_group, aes(x = Date, y = avg_rank, color = "Treatment Group"), size = 1) +
+  geom_line(data = control_group, aes(x = Date, y = avg_rank, color = "Control Group"), size = 1) +
+  labs(title = "Average Ranking Over Time",
+       x = "Date/Year",
+       y = "Average Ranking") +
+  scale_color_manual(values = c("Treatment Group" = "blue", "Control Group" = "red")) +
+  theme_minimal()
+```
+<there is a parallel trend but what happend in 200 to 2002? Therefore, we double checked the IMDB website on web.archive.org and looking at those dates thats when the platform became way more user friendly. The IMDB top 250 movie was for example also non existing by that time> 
+
+#running diff in diff normal movie ranks
+```{r}
+movie_ranks$time_indicator <- as.integer(movie_ranks$Date >= as.Date("2015-02-01"))
+
+model_diff <- lm(Rank ~ treatment * time_indicator, data = movie_ranks)
+
+summary(model_diff)
+
+```
+# the coeffient is actually significant. Nevertheless, this includes the 'bad data'before 2003. Lets remove those data and run it again. 
+
+```{r echo = FALSE}
+filtered_movie_ranks$time_indicator <- as.integer(filtered_movie_ranks$Date >= as.Date("2015-02-01"))
+
+model_diff_filtered <- lm(Rank ~ treatment * time_indicator, data = filtered_movie_ranks)
+
+summary(model_diff_filtered)
+```
+# the results of this model mean that if we clean all movies that were released before 2003. we still get a significant result for the interaction. What is even more inresting and valuable that movies after 2015 are far less popular, movies in the treatmant group meaning they have higher than the average racial diversity are also less popular. But when we combine them they become more popular. So let's change a few things 
+
+# Let's adjust the threshold for the treatment group. 
+```{r}
+df$hard_treatment <- ifelse(df$simpson_index > 0.4, 1, 0)
+
+# Add the treatment variable and imdb.com_releasedate to movie_ranks
+hard_treatment_movie_ranks <- movie_ranks %>%
+  left_join(df %>% select(hard_treatment, imdb.com_imdbid, imdb.com_releasedate), 
+            by = c("Movie_ID" = "imdb.com_imdbid"))
+
+
+# Convert imdb.com_releasedate to Date format (if not already)
+hard_treatment_movie_ranks <- hard_treatment_movie_ranks %>%
+  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate))
+
+# Filter the dataset to keep only observations where Date is after imdb.com_releasedate
+hard_filtered_movie_ranks <- hard_treatment_movie_ranks %>%
+  filter(Date >= imdb.com_releasedate)
+
+hard_filtered_movie_ranks <- hard_filtered_movie_ranks %>%
+  filter(imdb.com_releasedate > 2003)
+```
+
+
+
+```{r}
+hard_treatment_movie_ranks$time_indicator <- as.integer(hard_treatment_movie_ranks$Date >= as.Date("2015-02-01"))
+
+model_diff_hard <- lm(Rank ~ hard_treatment * time_indicator, data = hard_treatment_movie_ranks)
+
+summary(model_diff_hard)
+
+```
+
+```{r}
+hard_filtered_movie_ranks$time_indicator <- as.integer(hard_filtered_movie_ranks$Date >= as.Date("2015-02-01"))
+
+model_diff_hard <- lm(Rank ~ hard_treatment * time_indicator, data = hard_filtered_movie_ranks)
+
+summary(model_diff_hard)
+
+```
