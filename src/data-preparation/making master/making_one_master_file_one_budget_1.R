@@ -1,10 +1,10 @@
 library(dplyr)
 library(readr)
 
-MASTER_2000_2020 <- read_csv("data/MASTER_2000-2020.csv")
-scraped_budgets_imdb <- read_csv("data/scraped/additional_budgets/scraped_budgets_imdb.csv")
-scraped_budgets_TMDB <- read_csv("data/scraped/additional_budgets/movie_budget_revenue_sequal_TMDB.csv")
-awards_ratings <- read_csv("gen/data-preparation/temp/awards_ratings.csv")
+MASTER_2000_2020 <- read_csv("../../../data/van_lin_datasets/MASTER_2000-2020.csv")
+scraped_budgets_imdb <- read_csv("../../../data/scraped/additional_budgets/scraped_budgets_imdb.csv")
+scraped_budgets_TMDB <- read_csv("../../../data/scraped/additional_budgets/movie_budget_revenue_sequal_TMDB.csv")
+awards_ratings <- read_csv("../../../gen/data-preparation/temp/awards_ratings.csv")
 
 #Filtering away animation, year, no opening screens and USA
 MASTER_2000_2020 <- MASTER_2000_2020 %>%
@@ -67,4 +67,4 @@ filtered_final_dataset_budget <- final_dataset_has_budget %>%
 
 
 
-write.csv(filtered_final_dataset_budget, "gen/data-preparation/temp/master.csv")
+write.csv(filtered_final_dataset_budget, "../../../gen/data-preparation/temp/master.csv")

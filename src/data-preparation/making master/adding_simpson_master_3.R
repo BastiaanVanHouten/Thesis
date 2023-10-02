@@ -1,4 +1,4 @@
-library(dply)
+library(dplyr)
 
 master_cleaned <- read_csv("../../../gen/data-preparation/temp/master_cleaned.csv")
 subset_movies_simpson <- read.csv("../../../gen/data-preparation/output/movies_simpson_index.csv")

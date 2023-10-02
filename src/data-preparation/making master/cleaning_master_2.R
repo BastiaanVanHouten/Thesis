@@ -1,6 +1,6 @@
 library(dplyr)
 
-master <- read_csv("Master/Thesis/gen/data-preparation/temp/master.csv")
+master <- read_csv("../../../gen/data-preparation/temp/master.csv")
 
 # Replace "N/A" values in imdb.com_runtime with values from boxofficemojo.com_runtime
 master$`imdb.com_runtime` <- ifelse(master$`imdb.com_runtime` == "N/A", master$`boxofficemojo.com_runtime`, master$`imdb.com_runtime`)
@@ -35,4 +35,4 @@ master_cleaned  <- master %>%
     filter(boxofficemojo.com_openingtheaters >= 50 )
 
 
-write.csv(master_cleaned, "gen/data-preparation/output/master_cleaned.csv")
+write.csv(master_cleaned, "../../../gen/data-preparation/output/master_cleaned.csv")

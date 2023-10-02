@@ -14,14 +14,85 @@ library(broom)
 library(ggplot2)
 library(ggpubr)
 library(car)
+library(MASS)
 
-df <- read_csv("gen/data-preparation/output/thanos_endgame.csv")
-movie
+
+df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+```
+
+# Let's start by removing the outliers. 
+```{r echo=FALSE}
+# Create a scatterplot
+ggplot(df, aes(x = imdb.com_imdbid, y = Avg_Rank_Third_Year)) +
+  geom_point() +
+  labs(
+    x = "Movie Index",  # Label for x-axis
+    y = "Avg Rank Third Year",
+    title = "Scatterplot of Avg Rank Third Year vs. Movie Index"
+  )
+
+# Calculate the IQR
+q1 <- quantile(df$Avg_Rank_Third_Year, 0.25, na.rm = TRUE)
+q3 <- quantile(df$Avg_Rank_Third_Year, 0.75, na.rm = TRUE)
+iqr <- q3 - q1
+
+# Define the lower and upper bounds for outliers
+lower_bound <- q1 - 1.5 * iqr
+upper_bound <- q3 + 1.5 * iqr
+
+# Remove outliers from the dataset
+df_clean <- df[df$Avg_Rank_Third_Year >= lower_bound & df$Avg_Rank_Third_Year <= upper_bound, ]
+
+# Create a new boxplot without outliers
+ggplot(df_clean, aes(y = Avg_Rank_Third_Year)) +
+  geom_boxplot() +
+  labs(
+    y = "Avg Rank Third Year (Outliers Removed)",
+    title = "Boxplot of Avg Rank Third Year (Outliers Removed)"
+  )
+
+
+# Create a scatterplot
+ggplot(df_clean, aes(x = imdb.com_imdbid, y = Avg_Rank_Third_Year)) +
+  geom_point() +
+  labs(
+    x = "Movie Index",  # Label for x-axis
+    y = "Avg Rank Third Year",
+    title = "Scatterplot of Avg Rank Third Year vs. Movie Index"
+  )
+```
+
+# Let's see if box office is related to average ranking 
+
+```{ r echo=FALSE}
+
+df_clean$Box.Office <- as.numeric(df_clean$Box.Office)
+
+model_box_office <- lm(Avg_Rank_Third_Year ~ Box.Office, data = df_clean)
+model_box_office_year_1 <- lm(Avg_Rank_First_Year ~ Box.Office, data = df_clean)
+model_rank_release <- lm(rank_release ~ Box.Office, data = df_clean)
+
+# print model 
+summary(model_box_office)
+summary(model_box_office_year_1)
+summary(model_rank_release)
+
+# Scatterplot for model_box_office
+ggplot(df, aes(x = Box.Office, y = Avg_Rank_Third_Year)) +
+  geom_point() +                # Add points
+  geom_smooth(method = "lm") +  # Add a linear regression line
+  labs(
+    x = "Box Office",
+    y = "Avg Rank Third Year",
+    title = "Scatterplot of Avg Rank Third Year vs. Box Office"
+  )
+
 ```
 
 # Let's first check the average ranking per year of the movies
 ```{R echo = FALSE}
-ggplot(df, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
+ggplot(df_clean, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
   geom_line(stat = "summary", fun = "mean", fill = "skyblue") +
   labs(title = "Average Avg_Rank_Third_Year.y by imdb.com_year",
        x = "imdb.com_year",
@@ -30,13 +101,127 @@ ggplot(df, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
 
 ```
 
-<sub> only possible explanaition that top 250 or etc. is a very difficult to get to. The movies that have been published the more ocmpettive it is to have a movie that keeps remaining popular. 
-
+<sub> only possible explanation that top 250 or etc. is a very difficult to get to. The movies that have been published the more competitive it is to have a movie that keeps remaining popular.Therefore, it is logical that the movies that are newer are less popular after three years. Nevertheless, it is very difficult to explain why these movies popularity dropped so much after 2011.  
+# We noticed that the rankings for the movies before 2000 were not that accurate 
+```{r echo=FALSE}
+df_clean <- df_clean %>%
+  filter(imdb.com_year > 2000)
+```
 # This would be the regression of the main analysis
+<sub> to achieve homoskedacity we did filter out the movies that were before 2000. But we did not filter out outliners.  
 
 ```{r echo = FALSE}
+df_clean <- df
+df_clean <- na.omit(df_clean)
+
+small_constant <- 0.001  # You can change this value if needed
+
+df_clean$log_Nominee <- log(df_clean$Nominee + small_constant)
+df_clean$log_Winner <- log(df_clean$Winner + small_constant)
+df_clean$log_remake <- log(df_clean$imdb.com_remake + small_constant)
+df_clean$log_simpson_index <- log(df_clean$simpson_index + small_constant)
+df_clean$log_op_theater <- log(df_clean$boxofficemojo.com_openingtheaters + small_constant)
+
 # Create the main regression model
-model <- lm(Avg_Rank_Third_Year ~ simpson_index + 
+model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index+ 
+                boxofficemojo.com_openingtheaters + 
+                log(imdb.com_runtime) + mpaa_numeric + 
+                log(average_budget) + 
+                imdb.com_year +
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonbookseries + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                Total_Star_Power+
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
+                Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
+                Horror + Music + Documentary + Western, # Include all genre variables
+            data = df_clean)
+
+# Select only numeric columns from your dataset
+numeric_df <- df_clean[, sapply(df_clean, is.numeric)]
+
+# Calculate the correlation matrix for numeric variables
+cor_matrix <- cor(numeric_df)
+
+# Print the correlation matrix
+print(cor_matrix)
+
+
+
+# print model 
+summary(model)
+
+
+
+
+```
+
+```{r echo=FALSE}
+residualPlots(model)
+
+```
+## Result from the regression model : 
+<sub> In this case, the data represents a cross-sectional view of movie rankings and popularity at different points in time, with each observation corresponding to a specific year (e.g., 2001 for movies released in 1998 and 2007 for movies released in 2004).
+
+<sub> While the data does have a time dimension in the sense that it captures movie rankings at different years after their release, it is still considered cross-sectional in nature because each observation corresponds to a single year, and you are examining movies' attributes and performance at a specific moment in time. Cross-sectional data can include information from various time points, but it does not involve tracking individual entities or observations over time. Instead, it provides a snapshot or cross-section of the data at each time point.
+
+<sub> So, it is appropriate to refer to this data as cross-sectional data with a temporal component, where each observation corresponds to a specific year after a movie's release.
+
+<sub> Therefore, a 0.47 for R-squared is fine and we would perfer to use a model with an interecpt eventhough the R squared for the other is higher
+
+# Checking assumptions starting with indepence of observations
+```{r echo=FALSE}
+
+# Create residuals vs. fitted values plot
+plot(model$fitted.values, model$residuals, 
+     xlab = "Fitted Values", ylab = "Residuals",
+     main = "Residuals vs. Fitted Values Plot")
+
+# Create residuals vs. order plot
+plot(seq_along(model$residuals), model$residuals, 
+     xlab = "Observation Order", ylab = "Residuals",
+     main = "Residuals vs. Order Plot")
+
+plot(model, which = 1)  # Plots residuals vs. fitted values
+plot(model, which = 3)
+
+
+```
+
+# issue of hetreskedacity
+```{r echo=FALSE}
+par(mfrow=c(2, 2)) # Set up a grid of plots
+for (predictor in colnames(df_clean)) {
+  if (predictor != "Avg_Rank_Third_Year") { # Exclude the dependent variable
+    plot(df_clean[[predictor]], residuals(model),
+         xlab = predictor, ylab = "Residuals",
+         main = paste("Residuals vs.", predictor))
+  }
+}
+
+```
+
+```{r = echo=FALSE}
+plot(model, which = 2)  # Residuals vs. Each Predictor
+
+
+bp_test <- ncvTest(model)
+print(bp_test)
+```
+# As you can see we have issues with homoskedacity and independence so we took the lof for the dv 
+
+```{r = echo=FALSE}
+# Fit your log-transformed linear regression model
+model_log <- lm(log(Avg_Rank_Third_Year) ~ simpson_index + 
                 boxofficemojo.com_openingtheaters + 
                 imdb.com_runtime + mpaa_numeric + 
                 average_budget + 
@@ -53,28 +238,62 @@ model <- lm(Avg_Rank_Third_Year ~ simpson_index +
                 imdb.com_basedonshortstory + 
                 Nominee +
                 Winner +
-                the_numbers_com_dirpower_rank +
                 Total_Star_Power+
                 Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
                 Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
                 Horror + Music + Documentary + Western, # Include all genre variables
-            data = df)
+            data = df_clean)
+
+# Obtain a summary of the model
+model_summary <- summary(model_log )
+
+# Extract p-values from the summary
+p_values <- model_summary$coefficients[, "Pr(>|t|)"]
+
+print(p_values)
+
+plot(model_log, which = 2)  # Residuals vs. Each Predictor
 
 
+```
+# taking the square root
+```{r echo=FALSE}
+df_clean$sqrt_Avg_Rank_Third_Year <- sqrt(df_clean$Avg_Rank_Third_Year)
 
-# print model 
-summary(model)
+model_sqrt <- lm(sqrt_Avg_Rank_Third_Year ~ simpson_index + 
+           boxofficemojo.com_openingtheaters + 
+           imdb.com_runtime + mpaa_numeric + 
+           average_budget + 
+           imdb.com_year +
+           imdb.com_sequel + 
+           imdb.com_spinoff +
+           imdb.com_remake +
+           imdb.com_basedonbook + 
+           imdb.com_basedonbookseries + 
+           imdb.com_basedonplay + 
+           imdb.com_basedoncomic + 
+           imdb.com_basedoncomicbook + 
+           imdb.com_basedonnovel + 
+           imdb.com_basedonshortstory + 
+           Nominee +
+           Winner +
+           the_numbers_com_dirpower_rank +
+           Total_Star_Power+
+           Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
+           Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
+           Horror + Music + Documentary + Western,
+           data = df_clean)
+
+print(model_sqrt)
 ```
 
-## Result from the regression model : 
-<sub> In this case, the data represents a cross-sectional view of movie rankings and popularity at different points in time, with each observation corresponding to a specific year (e.g., 2001 for movies released in 1998 and 2007 for movies released in 2004).
+# Checking assumptions starting with indepence
+```{r echo=FALSE}
+plot(model_log, which = 1)  # Plots residuals vs. fitted values
 
-<sub> While the data does have a time dimension in the sense that it captures movie rankings at different years after their release, it is still considered cross-sectional in nature because each observation corresponds to a single year, and you are examining movies' attributes and performance at a specific moment in time. Cross-sectional data can include information from various time points, but it does not involve tracking individual entities or observations over time. Instead, it provides a snapshot or cross-section of the data at each time point.
+acf(residuals(model))  # Plots autocorrelation of residuals
 
-<sub> So, it is appropriate to refer to this data as cross-sectional data with a temporal component, where each observation corresponds to a specific year after a movie's release.
-
-<sub> Therefore, a 0.47 for R-squared is fine and we would perfer to use a model with an interecpt eventhough the R squared for the other is higher
-
+```
 
 # Checking for robustness starting with multicollinearity 
 
@@ -185,157 +404,4 @@ cat("Average of Simpson Index:", average_simpson_index, "\n")
 
 ```{r }
 movie_ranks <- read_csv("gen/data-preparation/output/movie_ranks.csv")
-```
-# Going for the Diff in Diff analysis
-<we first removed all ranks for the dates that were before the release of the movies 
-```{r echo = FALSE}
-df$treatment <- ifelse(df$simpson_index > 0.3627456, 1, 0)
-
-# Add the treatment variable and imdb.com_releasedate to movie_ranks
-movie_ranks <- movie_ranks %>%
-  left_join(df %>% select(treatment, imdb.com_imdbid, imdb.com_releasedate), 
-            by = c("Movie_ID" = "imdb.com_imdbid"))
-
-
-# Convert imdb.com_releasedate to Date format (if not already)
-movie_ranks <- movie_ranks %>%
-  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate))
-
-# Filter the dataset to keep only observations where Date is after imdb.com_releasedate
-filtered_movie_ranks <- movie_ranks %>%
-  filter(Date >= imdb.com_releasedate)
-
-filtered_movie_ranks <- filtered_movie_ranks %>%
-  filter(imdb.com_releasedate > 2003)
-
-
-```
-
-# Let's check for outliers
-<we removed a few outliers> 
-```{r echo = FALSE}
-# Calculate z-scores for Rank
-filtered_movie_ranks$z_score <- scale(filtered_movie_ranks$Rank)
-
-# Define a threshold for acceptable z-scores (e.g., within 3 standard deviations)
-threshold <- 30
-
-# Identify outliers
-outliers <- filtered_movie_ranks[abs(filtered_movie_ranks$z_score) > threshold, ]
-
-# Create a filtered dataset without outliers
-filtered_movie_ranks <- filtered_movie_ranks[abs(filtered_movie_ranks$z_score) <= threshold, ]
-
-# Remove the z_score variable as it's no longer needed
-filtered_movie_ranks$z_score <- NULL
-
-```
-
-
-< we are checking for a parallel trend> 
-
-```{r echo = FALSE}
-# Assuming your data frame is named movie_ranks
-
-# Filter the data into treatment and control groups
-treatment_group <- movie_ranks %>%
-  filter(treatment == 1) %>%
-  group_by(Date) %>%
-  summarise(avg_rank = mean(Rank))
-
-
-control_group <- filtered_movie_ranks %>%
-  filter(treatment == 0) %>%
-  group_by(Date) %>%
-  summarise(avg_rank = mean(Rank))
-
-```
-
-```{r}
-# Create the plot with facets
-ggplot(combined_data, aes(x = Date, y = avg_rank, color = group)) +
-  geom_line(size = 1) +
-  labs(title = "Average Ranking Over Time",
-       x = "Date/Year",
-       y = "Average Ranking") +
-  scale_color_manual(values = c("Treatment Group" = "blue", "Control Group" = "red")) +
-  facet_grid(. ~ group) +
-  theme_minimal()
-```
-
-```{r echo = FALSE}
-library(ggplot2)
-
-# Create the plot
-ggplot() +
-  geom_line(data = treatment_group, aes(x = Date, y = avg_rank, color = "Treatment Group"), size = 1) +
-  geom_line(data = control_group, aes(x = Date, y = avg_rank, color = "Control Group"), size = 1) +
-  labs(title = "Average Ranking Over Time",
-       x = "Date/Year",
-       y = "Average Ranking") +
-  scale_color_manual(values = c("Treatment Group" = "blue", "Control Group" = "red")) +
-  theme_minimal()
-```
-<there is a parallel trend but what happend in 200 to 2002? Therefore, we double checked the IMDB website on web.archive.org and looking at those dates thats when the platform became way more user friendly. The IMDB top 250 movie was for example also non existing by that time> 
-
-#running diff in diff normal movie ranks
-```{r}
-movie_ranks$time_indicator <- as.integer(movie_ranks$Date >= as.Date("2015-02-01"))
-
-model_diff <- lm(Rank ~ treatment * time_indicator, data = movie_ranks)
-
-summary(model_diff)
-
-```
-# the coeffient is actually significant. Nevertheless, this includes the 'bad data'before 2003. Lets remove those data and run it again. 
-
-```{r echo = FALSE}
-filtered_movie_ranks$time_indicator <- as.integer(filtered_movie_ranks$Date >= as.Date("2015-02-01"))
-
-model_diff_filtered <- lm(Rank ~ treatment * time_indicator, data = filtered_movie_ranks)
-
-summary(model_diff_filtered)
-```
-# the results of this model mean that if we clean all movies that were released before 2003. we still get a significant result for the interaction. What is even more inresting and valuable that movies after 2015 are far less popular, movies in the treatmant group meaning they have higher than the average racial diversity are also less popular. But when we combine them they become more popular. So let's change a few things 
-
-# Let's adjust the threshold for the treatment group. 
-```{r}
-df$hard_treatment <- ifelse(df$simpson_index > 0.4, 1, 0)
-
-# Add the treatment variable and imdb.com_releasedate to movie_ranks
-hard_treatment_movie_ranks <- movie_ranks %>%
-  left_join(df %>% select(hard_treatment, imdb.com_imdbid, imdb.com_releasedate), 
-            by = c("Movie_ID" = "imdb.com_imdbid"))
-
-
-# Convert imdb.com_releasedate to Date format (if not already)
-hard_treatment_movie_ranks <- hard_treatment_movie_ranks %>%
-  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate))
-
-# Filter the dataset to keep only observations where Date is after imdb.com_releasedate
-hard_filtered_movie_ranks <- hard_treatment_movie_ranks %>%
-  filter(Date >= imdb.com_releasedate)
-
-hard_filtered_movie_ranks <- hard_filtered_movie_ranks %>%
-  filter(imdb.com_releasedate > 2003)
-```
-
-
-
-```{r}
-hard_treatment_movie_ranks$time_indicator <- as.integer(hard_treatment_movie_ranks$Date >= as.Date("2015-02-01"))
-
-model_diff_hard <- lm(Rank ~ hard_treatment * time_indicator, data = hard_treatment_movie_ranks)
-
-summary(model_diff_hard)
-
-```
-
-```{r}
-hard_filtered_movie_ranks$time_indicator <- as.integer(hard_filtered_movie_ranks$Date >= as.Date("2015-02-01"))
-
-model_diff_hard <- lm(Rank ~ hard_treatment * time_indicator, data = hard_filtered_movie_ranks)
-
-summary(model_diff_hard)
-
 ```
