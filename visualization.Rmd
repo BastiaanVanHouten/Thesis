@@ -104,30 +104,50 @@ ggplot(df_clean, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
 <sub> only possible explanation that top 250 or etc. is a very difficult to get to. The movies that have been published the more competitive it is to have a movie that keeps remaining popular.Therefore, it is logical that the movies that are newer are less popular after three years. Nevertheless, it is very difficult to explain why these movies popularity dropped so much after 2011.  
 # We noticed that the rankings for the movies before 2000 were not that accurate 
 ```{r echo=FALSE}
-df_clean <- df_clean %>%
+df_clean <- df %>%
   filter(imdb.com_year > 2000)
 ```
 # This would be the regression of the main analysis
 <sub> to achieve homoskedacity we did filter out the movies that were before 2000. But we did not filter out outliners.  
 
-```{r echo = FALSE}
-df_clean <- df
-df_clean <- na.omit(df_clean)
+```{r echo=FALSE}
 
-small_constant <- 0.001  # You can change this value if needed
+df_clean$Metascore <- as.numeric(df_clean$Metascore)
+
+# Replace NA values with zero in specific columns
+df_clean$Nominee <- ifelse(is.na(df_clean$Nominee), 0, df_clean$Nominee)
+df_clean$Winner <- ifelse(is.na(df_clean$Winner), 0, df_clean$Winner)
+df_clean$imdb.com_remake <- ifelse(is.na(df_clean$imdb.com_remake), 0, df_clean$imdb.com_remake)
+df_clean$simpson_index <- ifelse(is.na(df_clean$simpson_index), 0, df_clean$simpson_index)
+df_clean$boxofficemojo.com_openingtheaters <- ifelse(is.na(df_clean$boxofficemojo.com_openingtheaters), 0, df_clean$boxofficemojo.com_openingtheaters)
+df_clean$the_numbers_com_dirpower_rank <- ifelse(is.na(df_clean$the_numbers_com_dirpower_rank), 0, df_clean$the_numbers_com_dirpower_rank)
+df_clean$Metascore <- ifelse(is.na(df_clean$Metascore), 0, df_clean$Metascore)
+df_clean$Total_Star_Power <- ifelse(is.na(df_clean$Total_Star_Power), 0 , df_clean$Total_Star_Power)
+
+# Apply log transformation with small_constant
+small_constant <- 1e-10  # Define your small constant value
 
 df_clean$log_Nominee <- log(df_clean$Nominee + small_constant)
 df_clean$log_Winner <- log(df_clean$Winner + small_constant)
 df_clean$log_remake <- log(df_clean$imdb.com_remake + small_constant)
 df_clean$log_simpson_index <- log(df_clean$simpson_index + small_constant)
 df_clean$log_op_theater <- log(df_clean$boxofficemojo.com_openingtheaters + small_constant)
+df_clean$log_dir_power <- log(df_clean$the_numbers_com_dirpower_rank + small_constant)
+df_clean$log_metascore <- log(df_clean$Metascore + small_constant)
+df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
+df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
+
+```
+
+
+```{r echo = FALSE}
 
 # Create the main regression model
-model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index+ 
-                boxofficemojo.com_openingtheaters + 
+model <- lm(log(Avg_Rank_Third_Year) ~ log_simpson_index + 
+                log(boxofficemojo.com_openingtheaters) + 
                 log(imdb.com_runtime) + mpaa_numeric + 
                 log(average_budget) + 
-                imdb.com_year +
+                imdb.com_releasedate +
                 imdb.com_sequel + 
                 imdb.com_spinoff +
                 log_remake +
@@ -140,33 +160,22 @@ model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index+
                 imdb.com_basedonshortstory + 
                 log_Nominee +
                 log_Winner +
-                Total_Star_Power+
-                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
-                Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
-                Horror + Music + Documentary + Western, # Include all genre variables
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery +                   Thriller + Romance + Sci.Fi + Biography + Sport + War + Family +  Musical + History + Horror + Music + Documentary + Western, # Include all genre variables
             data = df_clean)
-
-# Select only numeric columns from your dataset
-numeric_df <- df_clean[, sapply(df_clean, is.numeric)]
-
-# Calculate the correlation matrix for numeric variables
-cor_matrix <- cor(numeric_df)
-
-# Print the correlation matrix
-print(cor_matrix)
-
-
 
 # print model 
 summary(model)
-
-
-
-
 ```
 
 ```{r echo=FALSE}
-residualPlots(model)
+# Calculate the correlation matrix for numeric variables
+cor_matrix <- cor(df_clean)
+
+# Print the correlation matrix
+print(cor_matrix)
 
 ```
 ## Result from the regression model : 
@@ -197,18 +206,6 @@ plot(model, which = 3)
 
 ```
 
-# issue of hetreskedacity
-```{r echo=FALSE}
-par(mfrow=c(2, 2)) # Set up a grid of plots
-for (predictor in colnames(df_clean)) {
-  if (predictor != "Avg_Rank_Third_Year") { # Exclude the dependent variable
-    plot(df_clean[[predictor]], residuals(model),
-         xlab = predictor, ylab = "Residuals",
-         main = paste("Residuals vs.", predictor))
-  }
-}
-
-```
 
 ```{r = echo=FALSE}
 plot(model, which = 2)  # Residuals vs. Each Predictor
@@ -218,74 +215,6 @@ bp_test <- ncvTest(model)
 print(bp_test)
 ```
 # As you can see we have issues with homoskedacity and independence so we took the lof for the dv 
-
-```{r = echo=FALSE}
-# Fit your log-transformed linear regression model
-model_log <- lm(log(Avg_Rank_Third_Year) ~ simpson_index + 
-                boxofficemojo.com_openingtheaters + 
-                imdb.com_runtime + mpaa_numeric + 
-                average_budget + 
-                imdb.com_year +
-                imdb.com_sequel + 
-                imdb.com_spinoff +
-                imdb.com_remake +
-                imdb.com_basedonbook + 
-                imdb.com_basedonbookseries + 
-                imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
-                imdb.com_basedoncomicbook + 
-                imdb.com_basedonnovel + 
-                imdb.com_basedonshortstory + 
-                Nominee +
-                Winner +
-                Total_Star_Power+
-                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
-                Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
-                Horror + Music + Documentary + Western, # Include all genre variables
-            data = df_clean)
-
-# Obtain a summary of the model
-model_summary <- summary(model_log )
-
-# Extract p-values from the summary
-p_values <- model_summary$coefficients[, "Pr(>|t|)"]
-
-print(p_values)
-
-plot(model_log, which = 2)  # Residuals vs. Each Predictor
-
-
-```
-# taking the square root
-```{r echo=FALSE}
-df_clean$sqrt_Avg_Rank_Third_Year <- sqrt(df_clean$Avg_Rank_Third_Year)
-
-model_sqrt <- lm(sqrt_Avg_Rank_Third_Year ~ simpson_index + 
-           boxofficemojo.com_openingtheaters + 
-           imdb.com_runtime + mpaa_numeric + 
-           average_budget + 
-           imdb.com_year +
-           imdb.com_sequel + 
-           imdb.com_spinoff +
-           imdb.com_remake +
-           imdb.com_basedonbook + 
-           imdb.com_basedonbookseries + 
-           imdb.com_basedonplay + 
-           imdb.com_basedoncomic + 
-           imdb.com_basedoncomicbook + 
-           imdb.com_basedonnovel + 
-           imdb.com_basedonshortstory + 
-           Nominee +
-           Winner +
-           the_numbers_com_dirpower_rank +
-           Total_Star_Power+
-           Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
-           Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
-           Horror + Music + Documentary + Western,
-           data = df_clean)
-
-print(model_sqrt)
-```
 
 # Checking assumptions starting with indepence
 ```{r echo=FALSE}
