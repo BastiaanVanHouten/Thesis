@@ -2,8 +2,12 @@
 title: "Visualization"
 author: "Bastiaan"
 date: "2023-09-20"
-output: html_document
+output: 
+  html_document:
+    latex_engine: xelatex
+    keep_tex: true
 ---
+
 
 ```{r echo=FALSE }
 # load packages
@@ -15,52 +19,29 @@ library(ggplot2)
 library(ggpubr)
 library(car)
 library(MASS)
+library(stargazer)
+library(tinytex)
+library(lubridate)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
 
+
+chooseCRANmirror(graphics = FALSE)
+
+
+install.packages('memisc', repos='http://cran.us.r-project.org')
+library(memisc)
 
 df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
                            col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
 ```
 
-# Let's start by removing the outliers. 
+
+# We noticed that the rankings for the movies before 2000 were not that accurate 
 ```{r echo=FALSE}
-# Create a scatterplot
-ggplot(df, aes(x = imdb.com_imdbid, y = Avg_Rank_Third_Year)) +
-  geom_point() +
-  labs(
-    x = "Movie Index",  # Label for x-axis
-    y = "Avg Rank Third Year",
-    title = "Scatterplot of Avg Rank Third Year vs. Movie Index"
-  )
-
-# Calculate the IQR
-q1 <- quantile(df$Avg_Rank_Third_Year, 0.25, na.rm = TRUE)
-q3 <- quantile(df$Avg_Rank_Third_Year, 0.75, na.rm = TRUE)
-iqr <- q3 - q1
-
-# Define the lower and upper bounds for outliers
-lower_bound <- q1 - 1.5 * iqr
-upper_bound <- q3 + 1.5 * iqr
-
-# Remove outliers from the dataset
-df_clean <- df[df$Avg_Rank_Third_Year >= lower_bound & df$Avg_Rank_Third_Year <= upper_bound, ]
-
-# Create a new boxplot without outliers
-ggplot(df_clean, aes(y = Avg_Rank_Third_Year)) +
-  geom_boxplot() +
-  labs(
-    y = "Avg Rank Third Year (Outliers Removed)",
-    title = "Boxplot of Avg Rank Third Year (Outliers Removed)"
-  )
-
-
-# Create a scatterplot
-ggplot(df_clean, aes(x = imdb.com_imdbid, y = Avg_Rank_Third_Year)) +
-  geom_point() +
-  labs(
-    x = "Movie Index",  # Label for x-axis
-    y = "Avg Rank Third Year",
-    title = "Scatterplot of Avg Rank Third Year vs. Movie Index"
-  )
+df_clean <- df %>%
+  filter(imdb.com_year > 2000)
 ```
 
 # Let's see if box office is related to average ranking 
@@ -102,11 +83,6 @@ ggplot(df_clean, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
 ```
 
 <sub> only possible explanation that top 250 or etc. is a very difficult to get to. The movies that have been published the more competitive it is to have a movie that keeps remaining popular.Therefore, it is logical that the movies that are newer are less popular after three years. Nevertheless, it is very difficult to explain why these movies popularity dropped so much after 2011.  
-# We noticed that the rankings for the movies before 2000 were not that accurate 
-```{r echo=FALSE}
-df_clean <- df %>%
-  filter(imdb.com_year > 2000)
-```
 # This would be the regression of the main analysis
 <sub> to achieve homoskedacity we did filter out the movies that were before 2000. But we did not filter out outliners.  
 
@@ -137,15 +113,81 @@ df_clean$log_metascore <- log(df_clean$Metascore + small_constant)
 df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
 df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
 
+# Create new columns for each year from 2000 to 2019
+for (year in 2000:2019) {
+  col_name <- as.character(year)  # Convert the year to a character
+  df_clean[col_name] <- ifelse(df_clean$imdb.com_year == year, 1, 0)
+}
+
+# Seasonality
+# Create a new column for each season
+df_clean$Spring <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(3, 4, 5), 1, 0)
+df_clean$Summer <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(6, 7, 8), 1, 0)
+df_clean$Fall <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(9, 10, 11), 1, 0)
+df_clean$Winter <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(12, 1, 2), 1, 0)
+
+
 ```
 
 
 ```{r echo = FALSE}
 
+model_variables <- c(
+  "Avg_Rank_Third_Year",
+  "simpson_index",
+  "boxofficemojo.com_openingtheaters",
+  "imdb.com_runtime",
+  "mpaa_numeric",
+  "average_budget",
+  "imdb.com_releasedate",
+  "imdb.com_sequel",
+  "imdb.com_spinoff",
+  "log_remake",
+  "imdb.com_basedonbook",
+  "imdb.com_basedonbookseries",
+  "imdb.com_basedonplay",
+  "imdb.com_basedoncomic",
+  "imdb.com_basedoncomicbook",
+  "imdb.com_basedonnovel",
+  "imdb.com_basedonshortstory",
+  "log_Nominee",
+  "log_Winner",
+  "log_dir_power",
+  "log_metascore",
+  "log_starpower",
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Fantasy",
+  "Crime",
+  "Drama",
+  "Mystery",
+  "Thriller",
+  "Romance",
+  "Sci.Fi",
+  "Biography",
+  "Sport",
+  "War",
+  "Family",
+  "Musical",
+  "History",
+  "Horror",
+  "Music",
+  "Documentary",
+  "Western",
+  "Spring",
+  "Summer",
+  "Fall",
+  "Winter",
+  "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019"
+)
+
+df_clean_subset <- df_clean[model_variables]
+
 # Create the main regression model
-model <- lm(log(Avg_Rank_Third_Year) ~ log_simpson_index + 
+model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index + 
                 log(boxofficemojo.com_openingtheaters) + 
-                log(imdb.com_runtime) + mpaa_numeric + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
                 log(average_budget) + 
                 imdb.com_releasedate +
                 imdb.com_sequel + 
@@ -163,174 +205,33 @@ model <- lm(log(Avg_Rank_Third_Year) ~ log_simpson_index +
                 log_dir_power +
                 log_metascore + 
                 log_starpower +
-                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery +                   Thriller + Romance + Sci.Fi + Biography + Sport + War + Family +  Musical + History + Horror + Music + Documentary + Western, # Include all genre variables
-            data = df_clean)
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+                Winter +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+            data = df_clean_subset)
+
 
 # print model 
 summary(model)
 ```
 
 ```{r echo=FALSE}
-# Calculate the correlation matrix for numeric variables
-cor_matrix <- cor(df_clean)
 
-# Print the correlation matrix
-print(cor_matrix)
+stargazer(model, type = "text")
 
-```
-## Result from the regression model : 
-<sub> In this case, the data represents a cross-sectional view of movie rankings and popularity at different points in time, with each observation corresponding to a specific year (e.g., 2001 for movies released in 1998 and 2007 for movies released in 2004).
+mytable <- stargazer(model, type = "text", out = "mytable.tex")
+cat("\\input{mytable.tex}")
 
-<sub> While the data does have a time dimension in the sense that it captures movie rankings at different years after their release, it is still considered cross-sectional in nature because each observation corresponds to a single year, and you are examining movies' attributes and performance at a specific moment in time. Cross-sectional data can include information from various time points, but it does not involve tracking individual entities or observations over time. Instead, it provides a snapshot or cross-section of the data at each time point.
-
-<sub> So, it is appropriate to refer to this data as cross-sectional data with a temporal component, where each observation corresponds to a specific year after a movie's release.
-
-<sub> Therefore, a 0.47 for R-squared is fine and we would perfer to use a model with an interecpt eventhough the R squared for the other is higher
-
-# Checking assumptions starting with indepence of observations
-```{r echo=FALSE}
-
-# Create residuals vs. fitted values plot
-plot(model$fitted.values, model$residuals, 
-     xlab = "Fitted Values", ylab = "Residuals",
-     main = "Residuals vs. Fitted Values Plot")
-
-# Create residuals vs. order plot
-plot(seq_along(model$residuals), model$residuals, 
-     xlab = "Observation Order", ylab = "Residuals",
-     main = "Residuals vs. Order Plot")
-
-plot(model, which = 1)  # Plots residuals vs. fitted values
-plot(model, which = 3)
+mt <- tab_model(model)
 
 
+write_html(mt, "mt.html")
 ```
 
 
-```{r = echo=FALSE}
-plot(model, which = 2)  # Residuals vs. Each Predictor
-
-
-bp_test <- ncvTest(model)
-print(bp_test)
-```
-# As you can see we have issues with homoskedacity and independence so we took the lof for the dv 
-
-# Checking assumptions starting with indepence
-```{r echo=FALSE}
-plot(model_log, which = 1)  # Plots residuals vs. fitted values
-
-acf(residuals(model))  # Plots autocorrelation of residuals
-
-```
-
-# Checking for robustness starting with multicollinearity 
-
-```{r}
-
-# Calculate VIF for your linear regression model
-vif_values <- vif(model)
-
-# Print the VIF values
-print(vif_values)
-
-```
-
-<sub> All values are below 10 so no issue
-
-# See if some covariates influence the DV
-
-```{r echo = FALSE}
-# Create the main regression model
-model_covariates_check <- lm(simpson_index ~ 
-                boxofficemojo.com_openingtheaters + 
-                imdb.com_runtime + mpaa_numeric + 
-                average_budget + 
-                imdb.com_year +
-                imdb.com_sequel + 
-                imdb.com_spinoff +
-                imdb.com_remake +
-                imdb.com_basedonbook + 
-                imdb.com_basedonbookseries + 
-                imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
-                imdb.com_basedoncomicbook + 
-                imdb.com_basedonnovel + 
-                imdb.com_basedonshortstory + 
-                Nominee +
-                Winner +
-                the_numbers_com_dirpower_rank +
-                Total_Star_Power+
-                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller +
-                Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History +
-                Horror + Music + Documentary + Western, # Include all genre variables
-            data = df)
-
-
-
-# print model 
-summary(model_covariates_check)
-```
-
-<sub> imdb.com_year + , spinoff + ,basedonnovel - , genre action + , genre crime + , genre Mystery - , genre Romance -  , genre Sci Fi + ,  genre musical -, genre history - , genre Horror -, genre Music + . 
-
-```{r echo = FALSE}
-# Filter the data for movies with Music = 1
-music_movies <- df[df$Music == 1, ]
-
-# Display the filtered movies
-head(music_movies$imdb.com_title, n =4)
-```
-
-<sub> music movies are movies such a dirty dancing , all eyez on me, bohemian rapsody
-
-
-# Counting the movies with less than 2 for a ehtnicity
-
-```{r echo = FALSE}
-
-# Count the number of movies for each individual criterion (ignoring missing values)
-count_asian <- sum(df$Total_Assigned_Asian < 2, na.rm = TRUE)
-count_black <- sum(df$Total_Assigned_Black < 2, na.rm = TRUE)
-count_hispanic <- sum(df$Total_Assigned_Hispanic < 2, na.rm = TRUE)
-count_white <- sum(df$Total_Assigned_White < 2, na.rm = TRUE)
-
-count_minorities <- sum(df$Total_Assigned_Asian < 2 & 
-                        df$Total_Assigned_Black < 2 &
-                        df$Total_Assigned_Hispanic < 2, na.rm = TRUE)
-
-# Display the counts for each criterion
-cat("Number of movies with Total_Assigned_Asian < 2:", count_asian, "\n")
-cat("Number of movies with Total_Assigned_Black < 2:", count_black, "\n")
-cat("Number of movies with Total_Assigned_Hispanic < 2:", count_hispanic, "\n")
-cat("Number of movies with Total_Assigned_White < 2:", count_white, "\n")
-cat("Number of movies with Total_Assigned_Minorities < 2:", count_minorities, "\n")
-```
-
-<sub> There are at least 1079 (Asian), 659 (Black), 1048 (Hispanic), white (21) movies that can not get AIR for all ethnicities. Escpeially looking at ASian and Hispanic about halve of the movies does not have AIR only looking at the actors hired not even the content of the movie.299 have less than 2 for all minority groups 
-
-# Year is so important so let's see how diversity has developed over the years 
-```{r echo = FALSE}
-ggplot(df, aes(x = imdb.com_year, y = simpson_index)) +
-  geom_line(stat = "summary", fun = "mean", fill = "skyblue") +
-  labs(title = "Average diversity idex by imdb.com_year",
-       x = "imdb.com_year",
-       y = "Average Diversity") +
-  theme_minimal()
-
-```
-
-<While the acion genre is positivly correlated to the popularity of a movie because it's intercept is negative in the first model. Nevertheless, it is positivly correlated with the diversity of a movie. While the diversity of a movie is negativly correlated with the popularity of a movie. 
-```{r }
-# Calculate the average of df$simpson_index
-average_simpson_index <- mean(df$simpson_index, na.rm = TRUE)
-
-# Print the average
-cat("Average of Simpson Index:", average_simpson_index, "\n")
-```
-
-<sub> the average of the simpson diversity index is 0.3627456
-
-```{r }
-movie_ranks <- read_csv("gen/data-preparation/output/movie_ranks.csv")
-```

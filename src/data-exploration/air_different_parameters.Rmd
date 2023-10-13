@@ -32,12 +32,21 @@ t1_counts <- c(
   sum(df$Total_Assigned_Hispanic >= 2, na.rm = TRUE)
 )
 
-# filter df first to see if the movie was actually able to be analysed.
+# Adding the named file
+movies_simpson_named <- read_csv("../../gen/data-preparation/output/movies_simpson_named.csv")
+
+# Define the ethnicities and counts for t1 (for the named dataset)
+t1_count_named <- c(
+  sum(movies_simpson_named$Total_Assigned_Black >= 2, na.rm = TRUE),
+  sum(movies_simpson_named$Total_Assigned_Asian >= 2, na.rm = TRUE),
+  sum(movies_simpson_named$Total_Assigned_Hispanic >= 2, na.rm = TRUE)
+)
+
+# filter df first to see if the movie was actually able to be analyzed
 df_filtered <- df %>%
   filter(imdb.com_imdbid %in% movies_with_air_condition$tt_number)
 
-# Define the ethnicities and counts for t1
-ethnicities <- c("Black", "Asian", "Hispanic")
+# Define the ethnicities and counts for t1 (for the filtered dataset)
 t1_counts_filtered <- c(
   sum(df_filtered$Total_Assigned_Black >= 2, na.rm = TRUE),
   sum(df_filtered$Total_Assigned_Asian >= 2, na.rm = TRUE),
@@ -45,25 +54,50 @@ t1_counts_filtered <- c(
 )
 
 # Initialize an empty data frame to store the results
-result_df <- data.frame(Ethnicity = character(0), T1_Count = numeric(0), T2_Count = numeric(0), T3_Count = numeric(0))
+result_df <- data.frame(Ethnicity = character(0), T1_Count_Named = numeric(0), T1_Count_Filtered = numeric(0), T1_Count_All = numeric(0), T2_Count = numeric(0), T3_Count = numeric(0))
 
 # Loop through each ethnicity
 for (i in 1:length(ethnicities)) {
   ethnicity <- ethnicities[i]
-  t1_count_filtered <- t1_counts_filtered[i]
-  t1_count <- t1_counts[i]
+  t1_count_named_ethnicity <- t1_count_named[i]
+  t1_count_filtered_ethnicity <- t1_counts_filtered[i]
+  t1_count_ethnicity <- t1_counts[i]
   t2_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_with_white_t2")]] == 1)
   t3_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_t3")]] == 1)
   
   # Add the counts to the result data frame
-  result_df <- rbind(result_df, data.frame(Ethnicity = ethnicity,  T1_count_filtered =  t1_count_filtered, T1_Count = t1_count, T2_Count = t2_count, T3_Count = t3_count))
+  result_df <- rbind(result_df, data.frame(Ethnicity = ethnicity, T1_Count_Named = t1_count_named_ethnicity, T1_Count_Filtered = t1_count_filtered_ethnicity, T1_Count_All = t1_count_ethnicity, T2_Count = t2_count, T3_Count = t3_count))
 }
 
-df_t1_t2_t3 <- left_join(movies_with_air_condition, df, by = c ("tt_number" = "imdb.com_imdbid"))
 # Print the result data frame
 print(result_df)
+
+
+df_t1_t2_t3 <- left_join(movies_with_air_condition, df, by = c ("tt_number" = "imdb.com_imdbid"))
+
 ```
 
+# Getting the named with the conditiions 
+```{r echo=FALSE}
+named_air_condit <- read_csv("../../movies_with_air_condition_named.csv")
+
+# Initialize an empty data frame to store the results
+result_df <- data.frame(Ethnicity = character(0), T1_Count_Named = numeric(0), T1_Count_Filtered = numeric(0), T1_Count_All = numeric(0), T2_Count = numeric(0), T3_Count = numeric(0))
+
+# Loop through each ethnicity
+for (i in 1:length(ethnicities)) {
+  ethnicity <- ethnicities[i]
+  t2_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_with_white_t2")]] == 1)
+  t3_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_t3")]] == 1)
+  
+  # Add the counts to the result data frame
+  result_df <- rbind(result_df, data.frame(Ethnicity = ethnicity, T2_Count = t2_count_named, T3_Count = t3_count_named))
+}
+
+# Print the result data frame
+print(result_df)
+    
+```
 
 # The second step would be to first filter the characters on 'named characters'and then run the same tests. 
 ```{r echo=FALSE}

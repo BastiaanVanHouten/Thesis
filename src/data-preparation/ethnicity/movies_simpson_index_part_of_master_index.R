@@ -15,7 +15,7 @@ subset <- actors_with_ethnicity %>%
 
 # Define the thresholds
 threshold_high <- 0.6
-threshold_low <- 0.25
+threshold_low <- 0.3
 
 # Assign individuals to race or ethnicity categories based on probabilities
 subset <- subset %>%
@@ -31,29 +31,36 @@ subset <- subset %>%
     )
 
 
-# Assuming actors_with_ethnicity is your data frame
-# Specify the columns you want to calculate the average for
-columns_to_average <- c("asian", "black", "hispanic", "white")
+## Displaying how many people are identfied with the threshold
+# Assuming comparin is your data frame
 
-# Use rowMeans to calculate the average for each row in these columns
-average_ethnicity <- rowMeans(actors_with_ethnicity[columns_to_average], na.rm = TRUE)
+# Create a logical vector to check if any of the four columns have the value 1 or 0.5
+has_one_or_point_five <- apply(subset[, c("Assigned_White", "Assigned_Hispanic", "Assigned_Black", "Assigned_Asian")], 1, function(row) any(row %in% c(1, 0.5)))
 
-# average_ethnicity now contains the average for each row in the specified columns
+# Count the number of observations with at least one of the columns equal to 1 or 0.5
+num_observations_with_one_or_point_five <- sum(has_one_or_point_five)
+
+# Print the count
+cat("Number of observations with at least one column equal to 1 or 0.5: ", num_observations_with_one_or_point_five, "\n")
+
 
 
 # Assuming actors_with_ethnicity is your data frame
 # Specify the columns you want to visualize
 columns_to_visualize <- c("asian", "black", "hispanic", "white")
 
-# Create histograms for each column within the range [0, 0.5]
+# Determine the common Y-axis range for all plots
+common_y_range <- c(0, 50)  # Adjust as needed
+
+# Create histograms for each column within the common Y-axis range, excluding probabilities below 0.2
 par(mfrow = c(2, 2))  # Arrange plots in a 2x2 grid
 
 for (col in columns_to_visualize) {
-    # Filter the data within the specified range [0, 0.5]
-    data_filtered <- actors_with_ethnicity[[col]][actors_with_ethnicity[[col]] >= 0 & actors_with_ethnicity[[col]] <= 1]
+    # Filter the data within the specified range [0.2, 1]
+    data_filtered <- actors_with_ethnicity[[col]][actors_with_ethnicity[[col]] >= 0.6 & actors_with_ethnicity[[col]] <= 1]
     
-    # Create histogram without frequencies (percentages)
-    hist(data_filtered, main = col, xlab = col, col = "lightblue", freq = FALSE)
+    # Create histogram with a common Y-axis range
+    hist(data_filtered, main = col, xlab = col, col = "lightblue", freq = FALSE, ylim = common_y_range)
     
     # Calculate the percentage of data points in each bin
     breaks <- hist(data_filtered, plot = FALSE)$breaks
@@ -62,6 +69,8 @@ for (col in columns_to_visualize) {
     
     # Add percentage labels to the plot
 }
+
+
 
 # Reset the plotting layout to default
 par(mfrow = c(1, 1))
@@ -81,11 +90,12 @@ for (i in 1:length(columns_to_analyze)) {
 }
 
 
-
 subset <- subset %>%
     filter(
         Assigned_Asian >= 0.5 | Assigned_Black >=  0.5 | Assigned_Hispanic >=  0.5 | Assigned_White >=  0.5
     )
+
+write.csv(subset, "../../../gen/actors_with_assigned_ethnicity.csv")
 
 subset_movies <- subset %>%
     group_by(`Movie.ID`) %>%
@@ -113,6 +123,16 @@ subset_movies_simpson <- subset_movies_simpson %>%
 subset_movies_simpson <- subset_movies_simpson %>%
     mutate(simpson_index = 1 - D)
 
+# Calculate the average value for the "simpson_index" column
+average_simpson_index <- mean(subset_movies_simpson$simpson_index, na.rm = TRUE)
 
+# Print the result
+cat("Average Simpson Index:", average_simpson_index, "\n")
+
+
+# Average comparison named and non named characters. 
+filtered_characters <- read.csv("../../../gen/filtered_characters.csv")
+
+filtered_characters <- filtered_characters
 
 write.csv(subset_movies_simpson, "../../../gen/data-preparation/output/movies_simpson_index.csv")
