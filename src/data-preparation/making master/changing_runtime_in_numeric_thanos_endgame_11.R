@@ -18,3 +18,4 @@ thanos$mpaa_numeric <- as.numeric(factor(thanos$imdb.com_MPAArating,
 thanos$imdb.com_metascore <- as.numeric(thanos$imdb.com_metascore)
 
 write.csv(thanos, "../../../gen/data-preparation/output/thanos_endgame.csv")
+

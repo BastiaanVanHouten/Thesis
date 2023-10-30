@@ -1,11 +1,9 @@
 # Load the necessary libraries
 library(dplyr)
+library(readr)
 
 actors_with_ethnicity <- read.csv("../../../gen/data-preparation/output/actors_with_ethnicity.csv")
 
-
-comparing <- actors_with_ethnicity %>%
-    filter(!is.na(asian) & !grepl("uncredited", Character, ignore.case = TRUE))
 
 # first clean for uncredited and asian is not NA
 subset <- actors_with_ethnicity %>%
@@ -15,20 +13,130 @@ subset <- actors_with_ethnicity %>%
 
 # Define the thresholds
 threshold_high <- 0.6
-threshold_low <- 0.3
 
 # Assign individuals to race or ethnicity categories based on probabilities
 subset <- subset %>%
     mutate(
-        Assigned_Asian = ifelse(asian >= threshold_high, 1,
-                                ifelse(asian >= threshold_low, 0.5, 0)),
-        Assigned_Black = ifelse(black >= threshold_high, 1,
-                                ifelse(black >= threshold_low, 0.5, 0)),
-        Assigned_Hispanic = ifelse(hispanic >= threshold_high, 1,
-                                   ifelse(hispanic >= threshold_low, 0.5, 0)),
-        Assigned_White = ifelse(white >= threshold_high, 1,
-                                ifelse(white >= threshold_low, 0.5, 0))
+        Assigned_Asian = ifelse(asian >= threshold_high, 1, 0),
+        Assigned_Black = ifelse(black >= threshold_high, 1, 0),
+        Assigned_Hispanic = ifelse(hispanic >= threshold_high, 1, 0),
+        Assigned_White = ifelse(white >= threshold_high, 1, 0)
     )
+
+subset <- subset %>%
+    mutate(
+        Highest_Probability = pmax(asian, black, hispanic, white, na.rm = TRUE)
+    )
+
+
+
+subset <- subset %>%
+    mutate(
+        Second_Highest_Probability = apply(subset[,c("asian", "black", "hispanic", "white")], 1, function(row) {
+            sorted_probs <- sort(row, decreasing = TRUE, na.last = TRUE)
+            if (length(sorted_probs) < 2) {
+                NA
+            } else {
+                sorted_probs[2]
+            }
+        })
+    )
+
+
+subset <- subset %>%
+    mutate(
+        Sum_Highest_Second_Highest = Highest_Probability + Second_Highest_Probability
+    )
+
+subset <- subset %>%
+    mutate(
+        Highest_Divided_By_Sum = Highest_Probability / (Highest_Probability + Second_Highest_Probability)
+    )
+
+subset <- subset %>%
+    mutate(
+        Second_Highest_Divided_By_Sum = Second_Highest_Probability / (Highest_Probability + Second_Highest_Probability)
+    )
+
+subset <- subset %>%
+    mutate(
+        None_Assigned = ifelse(rowSums(dplyr::select(., starts_with("Assigned"))) == 0, 1, 0)
+    ) %>%
+    mutate(
+        Assigned_Asian = case_when(
+            None_Assigned == 1 & asian == Highest_Probability ~ Highest_Divided_By_Sum,
+            None_Assigned == 1 & asian == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
+            TRUE ~ Assigned_Asian
+        ),
+        Assigned_Black = case_when(
+            None_Assigned == 1 & black == Highest_Probability ~ Highest_Divided_By_Sum,
+            None_Assigned == 1 & black == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
+            TRUE ~ Assigned_Black
+        ),
+        Assigned_Hispanic = case_when(
+            None_Assigned == 1 & hispanic == Highest_Probability ~ Highest_Divided_By_Sum,
+            None_Assigned == 1 & hispanic == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
+            TRUE ~ Assigned_Hispanic
+        ),
+        Assigned_White = case_when(
+            None_Assigned == 1 & white == Highest_Probability ~ Highest_Divided_By_Sum,
+            None_Assigned == 1 & white == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
+            TRUE ~ Assigned_White
+        )
+    )
+
+
+
+subset <- subset %>%
+    select(-Highest_Probability, -Second_Highest_Probability, -None_Assigned, -Sum_Highest_Second_Highest, -Highest_Divided_By_Sum, -Second_Highest_Divided_By_Sum)
+
+## Saving actors_with_assigned_ethnicity
+write.csv(subset, "../../../gen/actors_with_assigned_ethnicity.csv")
+
+subset_movies <- subset %>%
+    group_by(`Movie.ID`) %>%
+    summarize(
+        Total_Assigned_Asian = round(sum(Assigned_Asian)),
+        Total_Assigned_Black = round(sum(Assigned_Black)),
+        Total_Assigned_Hispanic = round(sum(Assigned_Hispanic)),
+        Total_Assigned_White = round(sum(Assigned_White))
+    )
+
+
+subset_movies <- subset_movies %>%
+    mutate(total_people = Total_Assigned_Asian + Total_Assigned_Black + Total_Assigned_Hispanic +  Total_Assigned_White)
+
+
+subset_movies_simpson <- subset_movies %>%
+    mutate(n_one_asian = (Total_Assigned_Asian - 1) * Total_Assigned_Asian, 
+           n_one_black = (Total_Assigned_Black - 1) * Total_Assigned_Black,
+           n_one_hisp = (Total_Assigned_Hispanic - 1) * Total_Assigned_Hispanic,
+           n_one_white = (Total_Assigned_White - 1) * Total_Assigned_White)
+
+subset_movies_simpson <- subset_movies_simpson %>%
+    mutate(D = (n_one_asian + n_one_black +  n_one_hisp + n_one_white) /  (total_people * ( total_people - 1 )))
+
+subset_movies_simpson <- subset_movies_simpson %>%
+    mutate(simpson_index = 1 - D)
+
+# Calculate the average value for the "simpson_index" column
+average_simpson_index <- mean(subset_movies_simpson$simpson_index, na.rm = TRUE)
+
+# Print the result
+cat("Average Simpson Index:", average_simpson_index, "\n")
+
+
+# Average comparison named and non named characters. 
+filtered_characters <- read.csv("../../../gen/filtered_characters.csv")
+
+filtered_characters <- filtered_characters
+
+write.csv(subset_movies_simpson, "../../../gen/data-preparation/output/movies_simpson_index.csv")
+
+
+
+
+## visualization 
 
 
 ## Displaying how many people are identfied with the threshold
@@ -95,44 +203,5 @@ subset <- subset %>%
         Assigned_Asian >= 0.5 | Assigned_Black >=  0.5 | Assigned_Hispanic >=  0.5 | Assigned_White >=  0.5
     )
 
-write.csv(subset, "../../../gen/actors_with_assigned_ethnicity.csv")
-
-subset_movies <- subset %>%
-    group_by(`Movie.ID`) %>%
-    summarize(
-        Total_Assigned_Asian = sum(Assigned_Asian),
-        Total_Assigned_Black = sum(Assigned_Black),
-        Total_Assigned_Hispanic = sum(Assigned_Hispanic),
-        Total_Assigned_White = sum(Assigned_White)
-    )
 
 
-subset_movies <- subset_movies %>%
-    mutate(total_people = Total_Assigned_Asian + Total_Assigned_Black + Total_Assigned_Hispanic +  Total_Assigned_White)
-
-
-subset_movies_simpson <- subset_movies %>%
-    mutate(n_one_asian = (Total_Assigned_Asian - 1) * Total_Assigned_Asian, 
-           n_one_black = (Total_Assigned_Black - 1) * Total_Assigned_Black,
-           n_one_hisp = (Total_Assigned_Hispanic - 1) * Total_Assigned_Hispanic,
-           n_one_white = (Total_Assigned_White - 1) * Total_Assigned_White)
-
-subset_movies_simpson <- subset_movies_simpson %>%
-    mutate(D = (n_one_asian + n_one_black +  n_one_hisp + n_one_white) /  (total_people * ( total_people - 1 )))
-
-subset_movies_simpson <- subset_movies_simpson %>%
-    mutate(simpson_index = 1 - D)
-
-# Calculate the average value for the "simpson_index" column
-average_simpson_index <- mean(subset_movies_simpson$simpson_index, na.rm = TRUE)
-
-# Print the result
-cat("Average Simpson Index:", average_simpson_index, "\n")
-
-
-# Average comparison named and non named characters. 
-filtered_characters <- read.csv("../../../gen/filtered_characters.csv")
-
-filtered_characters <- filtered_characters
-
-write.csv(subset_movies_simpson, "../../../gen/data-preparation/output/movies_simpson_index.csv")

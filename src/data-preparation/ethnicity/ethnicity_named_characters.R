@@ -2,7 +2,7 @@ library(dplyr)
 library(readr)
 library(tidyr)
 
-actors_ass_ethnicity <- read_csv("../../../gen/actors_with_assigned_ethnicity.csv")
+actors_ass_ethnicity <- read_csv("../../../gen/data-preparation/output/AIR_analysis")
 
 df <- actors_ass_ethnicity  %>%
   select(- `Birth.Year`, - asian, - black, -hispanic, - white, - age, - gender, - confidence , - actor_imdb_id, -`Cast.Member.Name`)
@@ -20,8 +20,7 @@ df <- df %>%
   mutate(
     Ethnicity = sub("Assigned_", "", Ethnicity),  # Remove "Assigned_" from the ethnicity names
     Assigned = case_when(
-      Assigned == 1 ~ Ethnicity,
-      Assigned == 0.5 ~ paste0(Ethnicity, ".05"),
+      Assigned >= 0.5 ~ Ethnicity,
       TRUE ~ "Not Assigned"
     )
   ) %>%
@@ -45,24 +44,28 @@ named_characters <- named_characters %>%
     values_from = Assigned
   ) 
 
-# Transform the data as per your requirements
+library(dplyr)
+
+# Replace all non-NA values in the ethnicity columns with 1 and NA with 0
 named_characters <- named_characters %>%
-  mutate(
-    Black = ifelse(!is.na(Black), 1, ifelse(!is.na(Black.05), 0.5, 0)),
-    Hispanic = ifelse(!is.na(Hispanic), 1, ifelse(!is.na(Hispanic.05), 0.5, 0)),
-    White = ifelse(!is.na(White), 1, ifelse(!is.na(White.05), 0.5, 0)),
-    Asian = ifelse(!is.na(Asian), 1, ifelse(!is.na(Asian.05), 0.5, 0))
-  ) %>%
-  select(-Black.05, -Hispanic.05, -White.05, -Asian.05)
+    mutate(
+        Black = ifelse(!is.na(Black), 1, 0),
+        White = ifelse(!is.na(White), 1, 0),
+        Asian = ifelse(!is.na(Asian), 1, 0),
+        Hispanic = ifelse(!is.na(Hispanic), 1, 0)
+    )
+
+
 
 subset_movies_named <- named_characters %>%
-  group_by(`Movie.ID`) %>%
-  summarize(
-    Total_Assigned_Asian = sum(Asian),
-    Total_Assigned_Black = sum(Black),
-    Total_Assigned_Hispanic = sum(Hispanic),
-    Total_Assigned_White = sum(White)
-  )
+    group_by(Movie.ID) %>%
+    dplyr::summarize(
+        Total_Assigned_Asian = sum(Asian, na.rm = TRUE),
+        Total_Assigned_Black = sum(Black, na.rm = TRUE),
+        Total_Assigned_Hispanic = sum(Hispanic, na.rm = TRUE),
+        Total_Assigned_White = sum(White, na.rm = TRUE)
+    )
+
 
 
 subset_movies_named  <- subset_movies_named  %>%

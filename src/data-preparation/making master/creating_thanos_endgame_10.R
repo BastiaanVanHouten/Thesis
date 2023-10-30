@@ -17,10 +17,13 @@ thanos$imdb.com_releasedate <- as.Date(thanos$imdb.com_releasedate, format = "%d
 # Format the Date object to the desired format
 thanos$imdb.com_releasedate <- format(thanos$imdb.com_releasedate, "%Y-%d-%m")
 
+write.csv(thanos, "../../../gen/data-preparation/output/thanos.csv")
+
 
 result <- movie_ranks %>%
-  left_join(thanos %>% select(imdb.com_imdbid, imdb.com_releasedate), 
-            by = c("Movie_ID" = "imdb.com_imdbid"))
+    left_join(thanos %>% dplyr::select(imdb.com_imdbid, imdb.com_releasedate), 
+              by = c("Movie_ID" = "imdb.com_imdbid"))
+
 
 
 result <- result %>%

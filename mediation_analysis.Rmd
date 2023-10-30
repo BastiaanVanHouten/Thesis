@@ -1,0 +1,314 @@
+---
+title: "mediation analysis"
+author: "Bastiaan"
+date: "2023-09-20"
+output: 
+  html_document:
+    latex_engine: xelatex
+    keep_tex: true
+---
+
+
+```{r echo=FALSE }
+# load packages
+# load packages
+library(readr)
+library(dplyr)
+library(broom)
+library(ggplot2)
+library(car)
+library(stargazer)
+library(lubridate)
+library(kableExtra)
+library(corrplot)
+
+
+
+
+
+
+df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+
+thanos <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+```
+
+```{r echo=FALSE}
+
+df <- df %>%
+  dplyr::select(-"imdb.com_releasedate")
+
+
+
+#Left join thanos$imdb.com_releasedate to df 
+df <- df %>%
+  left_join(thanos %>% dplyr::select(imdb.com_imdbid, imdb.com_releasedate),
+            by = c("imdb.com_imdbid" = "imdb.com_imdbid"))
+  
+
+df_clean <- df %>%
+  filter(imdb.com_year >= 2000)
+```
+
+```{r echo=FALSE}
+# Create new columns for each year from 2000 to 2019
+for (year in 2000:2019) {
+  col_name <- as.character(year)  # Convert the year to a character
+  df_clean[col_name] <- ifelse(df_clean$imdb.com_year == year, 1, 0)
+}
+
+df_clean$Metascore <- as.numeric(df_clean$Metascore)
+
+# Replace NA values with zero in specific columns
+df_clean$Nominee <- ifelse(is.na(df_clean$Nominee), 0, df_clean$Nominee)
+df_clean$Winner <- ifelse(is.na(df_clean$Winner), 0, df_clean$Winner)
+df_clean$imdb.com_remake <- ifelse(is.na(df_clean$imdb.com_remake), 0, df_clean$imdb.com_remake)
+df_clean$simpson_index <- ifelse(is.na(df_clean$simpson_index), 0, df_clean$simpson_index)
+df_clean$boxofficemojo.com_openingtheaters <- ifelse(is.na(df_clean$boxofficemojo.com_openingtheaters), 0, df_clean$boxofficemojo.com_openingtheaters)
+df_clean$the_numbers_com_dirpower_rank <- ifelse(is.na(df_clean$the_numbers_com_dirpower_rank), 0, df_clean$the_numbers_com_dirpower_rank)
+df_clean$Metascore <- ifelse(is.na(df_clean$Metascore), 0, df_clean$Metascore)
+df_clean$Total_Star_Power <- ifelse(is.na(df_clean$Total_Star_Power), 0 , df_clean$Total_Star_Power)
+
+# Apply log transformation with small_constant
+small_constant <- 1e-1  # Define your small constant value
+
+df_clean$log_Nominee <- log(df_clean$Nominee + small_constant)
+df_clean$log_Winner <- log(df_clean$Winner + small_constant)
+df_clean$log_remake <- log(df_clean$imdb.com_remake + small_constant)
+df_clean$log_simpson_index <- log(df_clean$simpson_index + small_constant)
+df_clean$log_op_theater <- log(df_clean$boxofficemojo.com_openingtheaters + small_constant)
+df_clean$log_dir_power <- log(df_clean$the_numbers_com_dirpower_rank + small_constant)
+df_clean$log_metascore <- log(df_clean$Metascore + small_constant)
+df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
+df_clean$log_MPAA <- log(df_clean$mpaa_numeric + small_constant)
+df_clean$log_sequel <- log(df_clean$imdb.com_sequel + small_constant)
+
+
+# Seasonality
+# Create a new column for each season
+df_clean$Spring <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(3, 4, 5), 1, 0)
+df_clean$Summer <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(6, 7, 8), 1, 0)
+df_clean$Fall <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(9, 10, 11), 1, 0)
+df_clean$Winter <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(12, 1, 2), 1, 0)
+
+
+```
+
+## For AIR we first need to filter which films were able to be parched 
+
+```{r echo = FALSE }
+df_clean_AIR <- df_clean[complete.cases(df_clean$Hispanic_condition_t2), ]
+
+# Convert the dependent variables to factor variables
+df_clean_AIR$Hispanic_condition_t3 <- factor(df_clean_AIR$Hispanic_condition_t3)
+df_clean_AIR$Black_condition_t3 <- factor(df_clean_AIR$Black_condition_t3)
+df_clean_AIR$Asian_condition_t3 <- factor(df_clean_AIR$Asian_condition_t3)
+
+```
+
+## Path A
+```{r echo = FALSE}
+# Fit a binary logistic regression model
+model_path_hisp <- glm(
+    Hispanic_condition_t3 ~
+    simpson_index +
+    log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log_MPAA + 
+                log(average_budget) + 
+                log_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+  data = df_clean_AIR,
+  family = binomial()  # Specify the family as binomial for binary logistic regression
+)
+
+summary(model_path_hisp)
+
+
+
+
+# Fit a binary logistic regression model
+model_path_asian <- glm(
+    Asian_condition_t3 ~
+    simpson_index +
+    log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log_MPAA + 
+                log(average_budget) + 
+                log_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+  data = df_clean_AIR,
+  family = binomial()  # Specify the family as binomial for binary logistic regression
+)
+
+summary(model_path_asian)
+
+
+# Fit a binary logistic regression model
+model_path_black <- glm(
+    Black_condition_t3 ~
+    simpson_index +
+    log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log_MPAA + 
+                log(average_budget) + 
+                log_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+  data = df_clean_AIR,
+  family = binomial()  # Specify the family as binomial for binary logistic regression
+)
+
+summary(model_path_black)
+
+```
+
+
+# Creating table result all three models
+```{r echo=FALSE}
+
+# Create a list of the three model objects
+models_list <- list(
+  model_path_hisp,
+  model_path_asian,
+  model_path_black
+)
+
+# Define custom names for the models
+model_names <- c("Hispanic", "Asian", "Black")
+
+# Use stargazer to generate a table
+table <- stargazer(
+  models_list,
+  title = "Logistic Regression Models by Ethnicity",
+  align = TRUE,  # Align coefficients
+  column.labels = model_names,  # Specify model names
+  dep.var.labels = c("Hispanic", "Asian", "Black"),  # Specify dependent variable labels
+  type = "text"  # Output the table as plain text
+)
+
+# Print the table
+cat(table)
+
+```
+
+
+# multicollinearity 
+```{r echo=FALSE}
+
+# Calculate VIF for the first model
+vif_hisp <- vif(model_path_hisp)
+
+# Calculate VIF for the second model
+vif_asian <- vif(model_path_asian)
+
+# Calculate VIF for the third model
+vif_black <- vif(model_path_black)
+
+# Print VIF values for each model
+print("VIF for Hispanic model:")
+print(vif_hisp)
+
+print("VIF for Asian model:")
+print(vif_asian)
+
+print("VIF for Black model:")
+print(vif_black)
+
+```
+
+## Path B
+```{r echo = FALSE}
+# Create the main regression model
+model <- lm(log(Avg_Rank_Third_Year) ~
+                Hispanic_condition_t3 +
+                Black_condition_t3 +
+                Asian_condition_t3 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+            data = df_clean_AIR)
+
+
+# print model 
+summary(model)
+```

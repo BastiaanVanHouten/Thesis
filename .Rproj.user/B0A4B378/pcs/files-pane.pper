@@ -2,8 +2,8 @@
     "sortOrder": [
         {
             "columnIndex": 2,
-            "ascending": true
+            "ascending": false
         }
     ],
-    "path": "~/Master/Thesis"
+    "path": "~/Master/Thesis/src/data-preparation/making master"
 }

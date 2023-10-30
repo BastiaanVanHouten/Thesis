@@ -21,6 +21,12 @@ thanos <- read_csv("../../gen/data-preparation/output/thanos_endgame.csv")
 # We started to do the anlysis midly. Here we just looked if there are more than 2 characters from the ethnicity. So they didn't neccesarly needed to be named. Moreover, the assigned ethnicities were based on two thresholds. 0.6 for a whole point and 0.25 for a halve a point. Here the scene index was 5 seconds for a new scene. T1 is from all the movies. Nevertheless, T2 and T3 are only from the movies which could be analysed. which were 1100. Moreover, we used people mentioned so there are most likely cases where someone is speaking about a person from the same ethncity group while they are actually not talking to that person. 
 
 ```{r echo=FALSE}
+named_air_condit <- read_csv("../../gen/movies_with_air_condition_named.csv")
+movies_simpson_named <- read_csv("../../gen/data-preparation/output/movies_simpson_named.csv")
+
+df <- subset(df, imdb.com_imdbid %in% named_air_condit$tt_number)
+movies_simpson_named <- subset(movies_simpson_named, Movie.ID %in% named_air_condit$tt_number)
+
 # Assuming your data frame is named 'movies_with_air_condition'
 # filter df first to see if the movie was actually able to be analysed.
 
@@ -33,9 +39,6 @@ t1_counts <- c(
 )
 
 # Adding the named file
-movies_simpson_named <- read_csv("../../gen/data-preparation/output/movies_simpson_named.csv")
-
-named_air_condit <- read_csv("../../movies_with_air_condition_named.csv")
 
 # Define the ethnicities and counts for t1 (for the named dataset)
 t1_count_named <- c(
@@ -65,7 +68,7 @@ for (i in 1:length(ethnicities)) {
   t1_count_ethnicity <- t1_counts[i]
   t2_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_with_white_t2")]] == 1)
   t3_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_t3")]] == 1)
-  t2_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_with_white_t2")]] == 1)
+  t2_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_t2")]] == 1)
   t3_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_t3")]] == 1)
 
   # Add the counts to the result data frame
@@ -90,14 +93,25 @@ print(result_df)
 
 ```
 
-```{r, echo = FALSE}
-# Add the counts to the result data frame
-  result_df <- rbind(result_df, data.frame(Ethnicity = ethnicity,T1_Count_All = t1_count_ethnicity, T1_Count_Named = t1_count_named_ethnicity,  T2_Count = t2_count_all, T2_count_named = t2_count_named,  T3_Count_all = t3_count, T3_count_named = t3_count_named))
-}
+
+```{r echo = FALSE}
+thanos_endgame <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+
+thanos_endgame <- left_join(thanos_endgame, named_air_condit, by = c("imdb.com_imdbid" = "tt_number"))
+
+write.csv(thanos_endgame, "~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv")
+
 ```
 
-# Paper doing name recognition https://aclanthology.org/N18-1200.pdf 
 
+
+
+
+
+
+
+# Paper doing name recognition https://aclanthology.org/N18-1200.pdf 
 
 # Here we also would like to see if the results differ before and after 2016. Seeing if people from minoritiy groups gained more named character positions
 

@@ -8,74 +8,49 @@ output:
     keep_tex: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+
 
 ```{r echo=FALSE }
+
 # load packages
-library(interactions)
 library(readr)
 library(dplyr)
 library(broom)
 library(ggplot2)
-library(ggpubr)
 library(car)
-library(MASS)
 library(stargazer)
-library(tinytex)
 library(lubridate)
-library(sjPlot)
-library(sjmisc)
-library(sjlabelled)
-library(memisc)
-library(apaTables)
-
+library(kableExtra)
+library(corrplot)
 
 df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+
+thanos <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos.csv", 
                            col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
 ```
 
 
 # We noticed that the rankings for the movies before 2000 were not that accurate 
 ```{r echo=FALSE}
+
+df <- df %>%
+  dplyr::select(-"imdb.com_releasedate")
+
+
+
+#Left join thanos$imdb.com_releasedate to df 
+df <- df %>%
+  left_join(thanos %>% dplyr::select(imdb.com_imdbid, imdb.com_releasedate),
+            by = c("imdb.com_imdbid" = "imdb.com_imdbid"))
+  
+
 df_clean <- df %>%
-  filter(imdb.com_year > 2000)
-```
-
-# Let's see if box office is related to average ranking 
-
-```{r echo=FALSE}
-
-df_clean$Box.Office <- as.numeric(df_clean$Box.Office)
-
-model_box_office <- lm(Avg_Rank_Third_Year ~ Box.Office, data = df_clean)
-model_box_office_year_1 <- lm(Avg_Rank_First_Year ~ Box.Office, data = df_clean)
-model_rank_release <- lm(rank_release ~ Box.Office, data = df_clean)
-
-# print model 
-summary(model_box_office)
-summary(model_box_office_year_1)
-summary(model_rank_release)
-
-# Scatterplot for model_box_office
-ggplot(df, aes(x = Box.Office, y = Avg_Rank_Third_Year)) +
-  geom_point() +                # Add points
-  geom_smooth(method = "lm") +  # Add a linear regression line
-  labs(
-    x = "Box Office",
-    y = "Avg Rank Third Year",
-    title = "Scatterplot of Avg Rank Third Year vs. Box Office"
-  )
-
-```
-
-# Let's first check the average ranking per year of the movies
-```{R echo = FALSE}
-ggplot(df_clean, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
-  geom_line(stat = "summary", fun = "mean", fill = "skyblue") +
-  labs(title = "Average Avg_Rank_Third_Year.y by imdb.com_year",
-       x = "imdb.com_year",
-       y = "Average Avg_Rank_Third_Year.y") +
-  theme_minimal()
-
+  filter(imdb.com_year >= 2000)
 ```
 
 <sub> only possible explanation that top 250 or etc. is a very difficult to get to. The movies that have been published the more competitive it is to have a movie that keeps remaining popular.Therefore, it is logical that the movies that are newer are less popular after three years. Nevertheless, it is very difficult to explain why these movies popularity dropped so much after 2011.  
@@ -83,6 +58,11 @@ ggplot(df_clean, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
 <sub> to achieve homoskedacity we did filter out the movies that were before 2000. But we did not filter out outliners.  
 
 ```{r echo=FALSE}
+# Create new columns for each year from 2000 to 2019
+for (year in 2000:2019) {
+  col_name <- as.character(year)  # Convert the year to a character
+  df_clean[col_name] <- ifelse(df_clean$imdb.com_year == year, 1, 0)
+}
 
 df_clean$Metascore <- as.numeric(df_clean$Metascore)
 
@@ -107,13 +87,9 @@ df_clean$log_op_theater <- log(df_clean$boxofficemojo.com_openingtheaters + smal
 df_clean$log_dir_power <- log(df_clean$the_numbers_com_dirpower_rank + small_constant)
 df_clean$log_metascore <- log(df_clean$Metascore + small_constant)
 df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
-df_clean$log_starpower <-log(df_clean$Total_Star_Power + small_constant)
+df_clean$log_MPAA <- log(df_clean$mpaa_numeric + small_constant)
+df_clean$log_sequel <- log(df_clean$imdb.com_sequel + small_constant)
 
-# Create new columns for each year from 2000 to 2019
-for (year in 2000:2019) {
-  col_name <- as.character(year)  # Convert the year to a character
-  df_clean[col_name] <- ifelse(df_clean$imdb.com_year == year, 1, 0)
-}
 
 # Seasonality
 # Create a new column for each season
@@ -125,17 +101,147 @@ df_clean$Winter <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(12, 1, 2),
 
 ```
 
+```{r echo = FALSE}
+df_clean <- df_clean %>%
+  filter(!is.na(Avg_Rank_Third_Year)) %>%
+    filter(!is.na(imdb.com_sequel)) %>%
+    filter(!is.na(mpaa_numeric))
+
+
+
+# List of continuous variables you want in the table
+continuous_vars <- c(
+  "Avg_Rank_Third_Year",
+  "simpson_index",
+  "boxofficemojo.com_openingtheaters",
+  "imdb.com_runtime",
+  "average_budget",
+  "Nominee",
+  "Winner",
+  "the_numbers_com_dirpower_rank",
+  "Total_Star_Power",
+  "Metascore",
+  "imdb.com_sequel",
+  "mpaa_numeric"
+)
+
+# Create a function to calculate the statistics
+calculate_statistics <- function(x) {
+  N <- length(x)
+  Mean <- mean(x)
+  SD <- sd(x)
+  Min <- min(x)
+  Max <- max(x)
+  return(c(N, Mean, SD, Min, Max))
+}
+
+
+# Calculate statistics for each variable
+statistics_list <- lapply(df_clean[continuous_vars], calculate_statistics)
+
+# Create a data frame for the table
+table_data <- data.frame(
+  Variable_Name = continuous_vars,
+  N = sapply(statistics_list, "[[", 1),
+  Mean = sapply(statistics_list, "[[", 2),
+  SD = sapply(statistics_list, "[[", 3),
+  Minimum = sapply(statistics_list, "[[", 4),
+  Maximum = sapply(statistics_list, "[[", 5)
+)
+
+
+# Print the table using the `kable()` function
+kable(table_data,
+       align = c("c", "r", "r", "r", "r"),
+       caption = "Descriptive Statistics for Continuous Variables",
+       row.names = FALSE)
+
+```
+
+# descriptive stats dummy variables
+```{r , echo=FALSE}
+
+# Create a list of years, genres, and other dummy variables
+years <- c("2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009",
+          "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019")
+
+genres <- c("Action", "Adventure", "Comedy", "Fantasy", "Crime", "Drama", "Mystery", "Thriller",
+           "Romance", "Sci.Fi", "Biography", "Sport", "War", "Family", "Musical", "History",
+           "Horror", "Music", "Documentary", "Western")
+
+other_dummy_vars <- c("Spring", "Summer", "Fall", "Winter",  "imdb.com_basedonbook",
+  "imdb.com_basedonbookseries",
+  "imdb.com_basedonplay",
+  "imdb.com_basedoncomic",
+  "imdb.com_basedoncomicbook",
+  "imdb.com_basedonnovel",
+  "imdb.com_basedonshortstory",
+  "imdb.com_spinoff")
+
+
+# Create empty data frames to store the results for each group
+year_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0))
+genre_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0))
+other_dummy_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0))
+
+# Calculate the frequency statistics and percentages for each group
+total_observations <- nrow(df_clean)
+
+for (variable in c(years, genres, other_dummy_vars)) {
+    freq_table <- table(df_clean[[variable]])
+    total_obs <- sum(df_clean[[variable]] == 1)
+    
+    if (variable %in% years) {
+        year_result <- rbind(year_result, data.frame(
+            Variable_name = variable,
+            N = freq_table[2],  # Count for value 1 (assuming 1 is the second level)
+            Percentage = (freq_table[2] / total_observations) * 100
+        ))
+    } else if (variable %in% genres) {
+        genre_result <- rbind(genre_result, data.frame(
+            Variable_name = variable,
+            N = freq_table[2],
+            Percentage = (freq_table[2] / total_observations) * 100
+        ))
+    } else if (variable %in% other_dummy_vars) {
+        other_dummy_result <- rbind(other_dummy_result, data.frame(
+            Variable_name = variable,
+            N = freq_table[2],
+            Percentage = (freq_table[2] / total_observations) * 100
+        ))
+    }
+}
+
+# Sort the data frames in descending order based on the "N" column
+year_result <- year_result %>% arrange(desc(N))
+genre_result <- genre_result %>% arrange(desc(N))
+other_dummy_result <- other_dummy_result %>% arrange(desc(N))
+
+
+# Print the results for each group in separate tables using kable
+cat("Years\n")
+kable(year_result, align = "c")
+cat("\nGenres\n")
+kable(genre_result, align = "c")
+cat("\nOther Dummy Variables\n")
+kable(other_dummy_result, align = "c")
+
+```
+
+
+
 
 ```{r echo = FALSE}
 
 model_variables <- c(
   "Avg_Rank_Third_Year",
   "simpson_index",
+  "log_simpson_index",
   "boxofficemojo.com_openingtheaters",
   "imdb.com_runtime",
-  "mpaa_numeric",
+  "log_MPAA",
   "average_budget",
-  "imdb.com_releasedate",
+  "log_sequel",
   "imdb.com_sequel",
   "imdb.com_spinoff",
   "log_remake",
@@ -175,22 +281,24 @@ model_variables <- c(
   "Summer",
   "Fall",
   "Winter",
-  "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019"
+  "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019"
 )
 
 df_clean_subset <- df_clean[model_variables]
 
+# Filter out rows with missing values in df_clean_subset
+df_clean_subset <- df_clean_subset[complete.cases(df_clean_subset), ]
+
+
 # Create the main regression model
-model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index + 
+model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index +
                 log(boxofficemojo.com_openingtheaters) + 
-                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(imdb.com_runtime) + log_MPAA + 
                 log(average_budget) + 
-                imdb.com_releasedate +
-                imdb.com_sequel + 
+                log_sequel + 
                 imdb.com_spinoff +
                 log_remake +
                 imdb.com_basedonbook + 
-                imdb.com_basedonbookseries + 
                 imdb.com_basedonplay + 
                 imdb.com_basedoncomic + 
                 imdb.com_basedoncomicbook + 
@@ -207,7 +315,6 @@ model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index +
                 Spring +
                 Summer +
                 Fall +
-                Winter +
                # Adding the year dummy variables to the model (excluding 2000)
                 `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
             data = df_clean)
@@ -215,9 +322,107 @@ model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index +
 
 # print model 
 summary(model)
+
+
+# Create a kable object for the table data
+kable_table <- kable(table_data, format = "html") %>%
+  kable_styling("striped", full_width = FALSE) %>%
+  kable_classic(full_width = FALSE)
+
+# Print the table
+cat(kable_table)
+
 ```
 
+# colleration matrix
 ```{r echo=FALSE}
+# Calculate the correlation matrix
+cor_matrix <- cor(df_clean_subset)
+
+
+# Print the correlation matrix
+print(cor_matrix)
+
+# Find rows and columns with correlation coefficients of 1 or -1
+perfect_collinearity <- which(abs(cor_matrix) == 1, arr.ind = TRUE)
+
+# Print the row and column names with perfect collinearity
+for (i in 1:nrow(perfect_collinearity)) {
+  row_idx <- perfect_collinearity[i, 1]
+  col_idx <- perfect_collinearity[i, 2]
+  row_name <- rownames(cor_matrix)[row_idx]
+  col_name <- colnames(cor_matrix)[col_idx]
+  cat("Perfect collinearity between", row_name, "and", col_name, "\n")
+}
+```
+# multicollinearity 
+```{r echo=FALSE}
+
+vif(model)
+
+```
+
+# Homoskedacity
+```{r echo=FALSE}
+
+# Extract the residuals from the model
+residuals <- residuals(model)
+
+# Generate a set of quantiles from a normal distribution with the same mean and standard deviation as the residuals
+expected_quantiles <- qnorm(ppoints(length(residuals)), mean = mean(residuals), sd = sd(residuals))
+
+# Create the P-P plot
+plot(expected_quantiles, sort(residuals), xlab = "Expected Quantiles", ylab = "Observed Quantiles")
+abline(0, 1, col = "red")
+
+
+# Perform the White test for heteroskedasticity
+white_test <- bptest(model)
+
+# Print the White test results
+print(white_test)
+
+# Calculate robust standard errors
+robust_se <- sqrt(diag(vcovHC(model, type = "HC3")))
+
+# View the summary of your model
+summary(model)
+
+# Apply robust standard errors to the model coefficients
+coeftest(model, vcov = vcovHC, type = "HC1")
+
+# Extract the robust standard errors
+robust_se <- sqrt(diag(vcovHC(model, type = "HC3")))
+
+# Extract the model coefficients
+model_coefs <- coef(model)
+
+# Extract the p-values
+p_values <- summary(model)$coefficients[, "Pr(>|t|)"]
+
+# Create a function to format p-values
+format_p_value <- function(p) {
+  if (p < 0.001) {
+    return(paste("< 0.001", "***"))
+  } else {
+    return(paste(signif(p, digits = 4), " "))
+  }
+}
+
+# Apply the format_p_value function to the p-values
+formatted_p_values <- sapply(p_values, format_p_value)
+
+# Combine the coefficients, their robust standard errors, and p-values
+coefs_se_pvalues <- data.frame(Coefficient = model_coefs, `Robust SE` = robust_se, `P-value` = formatted_p_values)
+
+# Create a table using kable
+kable(coefs_se_pvalues, format = "markdown")
+```
+
+
+
+```{r echo=FALSE}
+
 
 stargazer(model, type = "text")
 
@@ -231,3 +436,75 @@ write_html(mt, "mt.html")
 ```
 
 
+
+
+# let's remove the year dummy variables 
+```{r echo=FALSE}
+# Create the main regression model
+model_no_year <- lm(log(Avg_Rank_Third_Year) ~ simpson_index + 
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log_MPAA + 
+                log(average_budget) + 
+                log_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall,
+            data = df_clean_subset)
+
+
+# print model 
+summary(model_no_year)
+```
+# Let's see if box office is related to average ranking 
+
+```{r echo=FALSE}
+
+df_clean$Box.Office <- as.numeric(df_clean$Box.Office)
+
+model_box_office <- lm(Avg_Rank_Third_Year ~ Box.Office, data = df_clean)
+model_box_office_year_1 <- lm(Avg_Rank_First_Year ~ Box.Office, data = df_clean)
+model_rank_release <- lm(rank_release ~ Box.Office, data = df_clean)
+
+# print model 
+summary(model_box_office)
+summary(model_box_office_year_1)
+summary(model_rank_release)
+
+# Scatterplot for model_box_office
+ggplot(df, aes(x = Box.Office, y = Avg_Rank_Third_Year)) +
+  geom_point() +                # Add points
+  geom_smooth(method = "lm") +  # Add a linear regression line
+  labs(
+    x = "Box Office",
+    y = "Avg Rank Third Year",
+    title = "Scatterplot of Avg Rank Third Year vs. Box Office"
+  )
+
+```
+
+# Let's first check the average ranking per year of the movies
+```{R echo = FALSE}
+ggplot(df_clean, aes(x = imdb.com_year, y = Avg_Rank_Third_Year)) +
+  geom_line(stat = "summary", fun = "mean", fill = "skyblue") +
+  labs(title = "Average Avg_Rank_Third_Year.y by imdb.com_year",
+       x = "imdb.com_year",
+       y = "Average Avg_Rank_Third_Year.y") +
+  theme_minimal()
+
+```
