@@ -66,7 +66,7 @@ for (i in 1:length(ethnicities)) {
   ethnicity <- ethnicities[i]
   t1_count_named_ethnicity <- t1_count_named[i]
   t1_count_ethnicity <- t1_counts[i]
-  t2_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_with_white_t2")]] == 1)
+  t2_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_t2")]] == 1)
   t3_count <- sum(movies_with_air_condition[[paste0(ethnicity, "_condition_t3")]] == 1)
   t2_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_t2")]] == 1)
   t3_count_named <- sum(named_air_condit[[paste0(ethnicity, "_condition_t3")]] == 1)

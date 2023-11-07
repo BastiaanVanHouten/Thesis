@@ -2,15 +2,16 @@
 title: "mediation analysis"
 author: "Bastiaan"
 date: "2023-09-20"
-output: 
+output:
   html_document:
     latex_engine: xelatex
-    keep_tex: true
+    keep_tex: yes
+  pdf_document: default
+  word_document: default
 ---
 
 
 ```{r echo=FALSE }
-# load packages
 # load packages
 library(readr)
 library(dplyr)
@@ -21,6 +22,7 @@ library(stargazer)
 library(lubridate)
 library(kableExtra)
 library(corrplot)
+library(openxlsx)
 
 
 
@@ -28,9 +30,6 @@ library(corrplot)
 
 
 df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
-                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
-
-thanos <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos.csv", 
                            col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
 ```
 
@@ -71,7 +70,7 @@ df_clean$Metascore <- ifelse(is.na(df_clean$Metascore), 0, df_clean$Metascore)
 df_clean$Total_Star_Power <- ifelse(is.na(df_clean$Total_Star_Power), 0 , df_clean$Total_Star_Power)
 
 # Apply log transformation with small_constant
-small_constant <- 1e-1  # Define your small constant value
+small_constant <- 0.1  # Define your small constant value
 
 df_clean$log_Nominee <- log(df_clean$Nominee + small_constant)
 df_clean$log_Winner <- log(df_clean$Winner + small_constant)
@@ -121,7 +120,6 @@ model_path_hisp <- glm(
                 log_remake +
                 imdb.com_basedonbook + 
                 imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
                 imdb.com_basedoncomicbook + 
                 imdb.com_basedonnovel + 
                 imdb.com_basedonshortstory + 
@@ -142,7 +140,6 @@ model_path_hisp <- glm(
   family = binomial()  # Specify the family as binomial for binary logistic regression
 )
 
-summary(model_path_hisp)
 
 
 
@@ -159,7 +156,6 @@ model_path_asian <- glm(
                 log_remake +
                 imdb.com_basedonbook + 
                 imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
                 imdb.com_basedoncomicbook + 
                 imdb.com_basedonnovel + 
                 imdb.com_basedonshortstory + 
@@ -175,12 +171,11 @@ model_path_asian <- glm(
                 Summer +
                 Fall +
                # Adding the year dummy variables to the model (excluding 2000)
-                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+                `2001`+`2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
   data = df_clean_AIR,
   family = binomial()  # Specify the family as binomial for binary logistic regression
 )
 
-summary(model_path_asian)
 
 
 # Fit a binary logistic regression model
@@ -195,7 +190,6 @@ model_path_black <- glm(
                 log_remake +
                 imdb.com_basedonbook + 
                 imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
                 imdb.com_basedoncomicbook + 
                 imdb.com_basedonnovel + 
                 imdb.com_basedonshortstory + 
@@ -217,6 +211,9 @@ model_path_black <- glm(
 )
 
 summary(model_path_black)
+summary(model_path_asian)
+summary(model_path_hisp)
+
 
 ```
 
@@ -247,7 +244,33 @@ table <- stargazer(
 # Print the table
 cat(table)
 
+# Capture the output of the stargazer function
+stargazer_output <- capture.output({
+  stargazer(
+    models_list,
+    title = "Logistic Regression Models by Ethnicity",
+    align = TRUE,  # Align coefficients
+    column.labels = model_names,  # Specify model names
+    dep.var.labels = c("Hispanic", "Asian", "Black"),  # Specify dependent variable labels
+    type = "text"  # Output the table as plain text
+  )
+})
+
+# Combine all the outputs into a single string
+stargazer_output <- paste(stargazer_output, collapse = "\n")
+
+# Write the formatted table output into an Excel file
+writeLines(stargazer_output, "Logistic_Regression_Models.txt")
+
+# Read the text file
+data <- readLines("Logistic_Regression_Models.txt")
+
+# Write to CSV
+writeLines(data, "output.csv")
 ```
+
+
+
 
 
 # multicollinearity 
@@ -255,12 +278,21 @@ cat(table)
 
 # Calculate VIF for the first model
 vif_hisp <- vif(model_path_hisp)
+vif_dataframe_hips <- data.frame(VIF_Values = vif_hisp)
+
 
 # Calculate VIF for the second model
 vif_asian <- vif(model_path_asian)
+vif_dataframe_asian <- data.frame(VIF_Values = vif_asian)
 
 # Calculate VIF for the third model
 vif_black <- vif(model_path_black)
+vif_dataframe_black <- data.frame(VIF_Values = vif_black)
+
+vif_values <- cbind(vif_dataframe_black, vif_dataframe_asian, vif_dataframe_hips)
+
+# Rename the columns
+colnames(vif_values) <- c("Black", "Asian", "Hispanic")
 
 # Print VIF values for each model
 print("VIF for Hispanic model:")
@@ -274,10 +306,226 @@ print(vif_black)
 
 ```
 
+# colleration matrix
+```{r echo=FALSE}
+model_columns <- c(
+    "simpson_index", "Hispanic_condition_t3", "Black_condition_t3", "Asian_condition_t3",
+    "screens", "log_imdb.com_runtime", "log_mpaa_numeric",
+    "average_budget", "imdb.com_sequel", "imdb.com_spinoff", "log_remake",
+    "imdb.com_basedonbook", "imdb.com_basedonplay",
+    "imdb.com_basedoncomicbook", "imdb.com_basedonnovel", "imdb.com_basedonshortstory",
+    "log_Nominee", "log_Winner", "log_dir_power", "log_metascore", "log_starpower",
+    "Action", "Adventure", "Comedy", "Fantasy", "Crime", "Drama", "Mystery", "Thriller",
+    "Romance", "Sci.Fi", "Biography", "Sport", "War", "Family", "Musical", "History",
+    "Horror", "Music", "Documentary", "Western",
+    "Spring", "Summer", "Fall", "Winter",
+    "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010",
+    "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "Avg_Rank_Third_Year"
+)
+
+# Selecting relevant columns
+selected_columns <- c("imdb.com_metascore", "imdb.com_sequel", "Avg_Rank_First_Year", "rank_release", "Avg_Rank_Third_Year", "rank_two_weeks_before_release")
+
+
+# Convert specific columns to numeric
+df_clean_AIR$Hispanic_condition_t3 <- as.numeric(df_clean_AIR$Hispanic_condition_t3)
+df_clean_AIR$Black_condition_t3 <- as.numeric(df_clean_AIR$Black_condition_t3)
+df_clean_AIR$Asian_condition_t3 <- as.numeric(df_clean_AIR$Asian_condition_t3)
+df_clean_AIR$Budget <- as.numeric(df_clean_AIR$average_budget)
+df_clean_AIR$screens <- as.numeric(df_clean_AIR$boxofficemojo.com_openingtheaters)
+
+# Subtract 1 from each value in the specified columns
+df_clean_AIR$Hispanic_condition_t3 <- df_clean_AIR$Hispanic_condition_t3 - 1
+df_clean_AIR$Black_condition_t3 <- df_clean_AIR$Black_condition_t3 - 1
+df_clean_AIR$Asian_condition_t3 <- df_clean_AIR$Asian_condition_t3 - 1
+
+
+# Filter out rows with missing values in the selected columns
+df_clean_AIR_no_missing <- df_clean_AIR[complete.cases(df_clean_AIR[, selected_columns]), ]
+
+
+
+
+# Select only the numeric variables from df_clean_AIR
+numeric_data <- df_clean_AIR_no_missing[, sapply(df_clean_AIR_no_missing, is.numeric)]
+
+
+
+# Filter numeric_data for columns used in the model
+numeric_data <- numeric_data[, names(numeric_data) %in% model_columns]
+
+
+
+# Compute the correlation matrix
+correlation_matrix <- cor(numeric_data)
+
+
+# Convert the correlation matrix to a data frame
+correlation_df <- as.data.frame(correlation_matrix)
+
+# Write the correlation matrix data frame to an Excel file
+write.xlsx(correlation_df, "correlation_matrix.xlsx", asTable = TRUE)
+
+
+# Define the threshold for high collinearity
+threshold <- 0.5
+
+# Find rows and columns with correlation coefficients greater than the defined threshold
+high_collinearity <- which(abs(cor_matrix) > threshold & abs(cor_matrix) < 1, arr.ind = TRUE)
+
+# Print the row and column names with high collinearity
+for (i in 1:nrow(high_collinearity)) {
+  row_idx <- high_collinearity[i, 1]
+  col_idx <- high_collinearity[i, 2]
+  row_name <- rownames(cor_matrix)[row_idx]
+  col_name <- colnames(cor_matrix)[col_idx]
+  correlation <- cor_matrix[row_idx, col_idx]
+  cat("High collinearity between", row_name, "and", col_name, "with correlation:", correlation, "\n")
+}
+
+```
+
+
+# model fit 
+
+```{r echo=FALSE}
+anova(model_path_asian,test="LRT")
+
+```
+
 ## Path B
 ```{r echo = FALSE}
 # Create the main regression model
-model <- lm(log(Avg_Rank_Third_Year) ~
+model_path_b <- lm(log(Avg_Rank_Third_Year) ~
+                Hispanic_condition_t3 +
+                Black_condition_t3 +
+                Asian_condition_t3 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+            data = df_clean_AIR)
+
+model_coef <- summary(model_path_b)$coefficients
+
+# Converting coefficients and standard errors to a dataframe
+model_df <- data.frame(
+  Coefficients = model_coef[, 1],
+  Standard_Error = model_coef[, 2]
+)
+
+
+
+# Extracting coefficients, their standard errors, and significance stars
+model_summary <- summary(model)
+model_coef <- model_summary$coefficients
+
+# Extracting significance stars
+signif_stars <- ifelse(model_coef[,4] < 0.001, '***', ifelse(model_coef[,4] < 0.01, '**', ifelse(model_coef[,4] < 0.05, '*', '')))
+
+# Combining coefficients, standard errors, and significance stars into a dataframe
+model_df <- data.frame(
+  Coefficients = model_coef[, 1],
+  Standard_Error = model_coef[, 2],
+  Significance = signif_stars
+)
+
+# Displaying the dataframe
+print(model_df)
+```
+
+
+# Multi
+```{r echo=FALSE}
+# Calculate VIF for the first model
+vif_b <- vif(model_path_b)
+
+print(vif_b)
+```
+
+# Homoskedacity path B 
+```{r echo=FALSE}
+
+# Extract the residuals from the model
+residuals <- residuals(model)
+
+# Generate a set of quantiles from a normal distribution with the same mean and standard deviation as the residuals
+expected_quantiles <- qnorm(ppoints(length(residuals)), mean = mean(residuals), sd = sd(residuals))
+
+# Create the P-P plot
+plot(expected_quantiles, sort(residuals), xlab = "Expected Quantiles", ylab = "Observed Quantiles")
+abline(0, 1, col = "red")
+
+
+# Perform the White test for heteroskedasticity
+white_test <- bptest(model_path_b)
+
+# Print the White test results
+print(white_test)
+
+# Calculate robust standard errors
+robust_se <- sqrt(diag(vcovHC(model, type = "HC3")))
+
+# View the summary of your model
+summary(model)
+
+# Apply robust standard errors to the model coefficients
+coeftest(model, vcov = vcovHC, type = "HC1")
+
+# Extract the robust standard errors
+robust_se <- sqrt(diag(vcovHC(model, type = "HC3")))
+
+# Extract the model coefficients
+model_coefs <- coef(model)
+
+# Extract the p-values
+p_values <- summary(model)$coefficients[, "Pr(>|t|)"]
+
+# Create a function to format p-values
+format_p_value <- function(p) {
+  if (p < 0.001) {
+    return(paste("< 0.001", "***"))
+  } else {
+    return(paste(signif(p, digits = 4), " "))
+  }
+}
+
+# Apply the format_p_value function to the p-values
+formatted_p_values <- sapply(p_values, format_p_value)
+
+# Combine the coefficients, their robust standard errors, and p-values
+coefs_se_pvalues <- data.frame(Coefficient = model_coefs, `Robust SE` = robust_se, `P-value` = formatted_p_values)
+
+# Create a table using kable
+kable(coefs_se_pvalues, format = "markdown")
+```
+
+
+## Path c
+```{r echo = FALSE}
+# Create the main regression model
+model_path_c <- lm(log(Avg_Rank_Third_Year) ~
+                simpson_index +
                 Hispanic_condition_t3 +
                 Black_condition_t3 +
                 Asian_condition_t3 +
@@ -310,5 +558,12 @@ model <- lm(log(Avg_Rank_Third_Year) ~
 
 
 # print model 
-summary(model)
+summary(model_path_c)
+```
+
+```{r echo=FALSE}
+# Calculate VIF for the first model
+vif_c <- vif(model_path_c)
+
+print(vif_c)
 ```

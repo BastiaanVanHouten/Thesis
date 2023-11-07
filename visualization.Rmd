@@ -26,6 +26,10 @@ library(stargazer)
 library(lubridate)
 library(kableExtra)
 library(corrplot)
+library(lmtest)
+library(sandwich)
+
+
 
 df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
                            col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
@@ -300,7 +304,6 @@ model <- lm(log(Avg_Rank_Third_Year) ~ simpson_index +
                 log_remake +
                 imdb.com_basedonbook + 
                 imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
                 imdb.com_basedoncomicbook + 
                 imdb.com_basedonnovel + 
                 imdb.com_basedonshortstory + 
@@ -334,6 +337,16 @@ cat(kable_table)
 
 ```
 
+# multicollinearity 
+```{r echo=FALSE}
+
+vif_value <- vif(model)
+vif_value <- data.frame(VIF_Values = vif_value)
+
+
+```
+
+
 # colleration matrix
 ```{r echo=FALSE}
 # Calculate the correlation matrix
@@ -355,12 +368,7 @@ for (i in 1:nrow(perfect_collinearity)) {
   cat("Perfect collinearity between", row_name, "and", col_name, "\n")
 }
 ```
-# multicollinearity 
-```{r echo=FALSE}
 
-vif(model)
-
-```
 
 # Homoskedacity
 ```{r echo=FALSE}
