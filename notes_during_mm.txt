@@ -2,3 +2,22 @@ difference in measuremt DV,
 Different years 
 
 Change the years etc. 
+
+make a variable displaying films that show tokenism . 1, 0 , 1 
+
+t_1 not as named
+
+Director power
+Dummy variables loggedd swithc to the the power of X values.  
+Check if the small continous variables are first multiplied by 100. 
+Unit free, so mention it in hte table.  
+
+Does T3 asian have values in 2000? 
+
+Hanssens, D.M. (2009, 2015), “Empirical Generalizations about
+Marketing Impact,” Marketing Science Institute, Relevant Knowledge
+Series.
+
+Multi collinearity explanaition in the notes. 
+
+Explain which model is perferred.  

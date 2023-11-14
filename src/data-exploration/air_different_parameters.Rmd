@@ -4,28 +4,34 @@ author: "Bastiaan"
 date: "2023-09-28"
 output: html_document
 ---
-```{r , load packages, echo=FALSE}
+```{r , load packages, echo=FALSE, message= FALSE, warning=FALSE}
 library(readr)
 library(dplyr)
 library(ggplot2)
 library(tidyverse)
 ```
 
-```{r echo=FALSE}
-movies_with_air_condition <- read_csv("../../data/AIR_analysis/movies_with_air_condition.csv")
-df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
-                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
-named_characters <- read_csv("../../data/AIR_analysis/filtered_named_characters.csv")
-thanos <- read_csv("../../gen/data-preparation/output/thanos_endgame.csv")
-```
-# We started to do the anlysis midly. Here we just looked if there are more than 2 characters from the ethnicity. So they didn't neccesarly needed to be named. Moreover, the assigned ethnicities were based on two thresholds. 0.6 for a whole point and 0.25 for a halve a point. Here the scene index was 5 seconds for a new scene. T1 is from all the movies. Nevertheless, T2 and T3 are only from the movies which could be analysed. which were 1100. Moreover, we used people mentioned so there are most likely cases where someone is speaking about a person from the same ethncity group while they are actually not talking to that person. 
+```{r echo=FALSE, message= FALSE, warning=FALSE}
+named_air_condit <- read_csv("../../data/AIR_analysis/movies_with_air_condition_named.csv")
 
-```{r echo=FALSE}
-named_air_condit <- read_csv("../../gen/movies_with_air_condition_named.csv")
+df <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame_done.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+
+named_characters <- read_csv("../../data/AIR_analysis/named_characters.csv")
+
 movies_simpson_named <- read_csv("../../gen/data-preparation/output/movies_simpson_named.csv")
 
+movies_with_air_condition <- read_csv("../../data/AIR_analysis/movies_with_air_condition.csv")
+
+```
+
+# We started to do the anlysis midly. Here we just looked if there are more than 2 characters from the ethnicity. So they didn't neccesarly needed to be named. Here the scene index was 5 seconds for a new scene. T1 is from all the movies. Nevertheless, T2 and T3 are only from the movies which could be analysed. which were 1100. Moreover, we used people mentioned so there are most likely cases where someone is speaking about a person from the same ethncity group while they are actually not talking to that person. 
+
+```{r echo=FALSE, message= FALSE, warning=FALSE}
+
 df <- subset(df, imdb.com_imdbid %in% named_air_condit$tt_number)
-movies_simpson_named <- subset(movies_simpson_named, Movie.ID %in% named_air_condit$tt_number)
+
+movies_simpson_named_filtered <- subset(movies_simpson_named, Movie.ID %in% named_air_condit$tt_number)
 
 # Assuming your data frame is named 'movies_with_air_condition'
 # filter df first to see if the movie was actually able to be analysed.
@@ -42,20 +48,9 @@ t1_counts <- c(
 
 # Define the ethnicities and counts for t1 (for the named dataset)
 t1_count_named <- c(
-  sum(movies_simpson_named$Total_Assigned_Black >= 2, na.rm = TRUE),
-  sum(movies_simpson_named$Total_Assigned_Asian >= 2, na.rm = TRUE),
-  sum(movies_simpson_named$Total_Assigned_Hispanic >= 2, na.rm = TRUE)
-)
-
-# filter df first to see if the movie was actually able to be analyzed
-df_filtered <- df %>%
-  filter(imdb.com_imdbid %in% movies_with_air_condition$tt_number)
-
-# Define the ethnicities and counts for t1 (for the filtered dataset)
-t1_counts_filtered <- c(
-  sum(df_filtered$Total_Assigned_Black >= 2, na.rm = TRUE),
-  sum(df_filtered$Total_Assigned_Asian >= 2, na.rm = TRUE),
-  sum(df_filtered$Total_Assigned_Hispanic >= 2, na.rm = TRUE)
+  sum(movies_simpson_named_filtered$Total_Assigned_Black >= 2, na.rm = TRUE),
+  sum(movies_simpson_named_filtered$Total_Assigned_Asian >= 2, na.rm = TRUE),
+  sum(movies_simpson_named_filtered$Total_Assigned_Hispanic >= 2, na.rm = TRUE)
 )
 
 #Initialize an empty data frame to store the results
@@ -79,69 +74,35 @@ print(result_df)
 ```
 
 
-# The second step would be to first filter the characters on 'named characters'and then run the same tests. 
-```{r echo=FALSE}
-result_df
-result_df <- result_df %>%
+
+
+```{r echo=FALSE, message= FALSE, warning=FALSE}
+thanos_endgame <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame_done.csv", 
+                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
+
+
+
+movies_simpson_named <- movies_simpson_named %>%
   mutate(
-    NC_T1 = sum(named_characters$Black >= 2, na.rm = TRUE) * (Ethnicity == "Black") +
-            sum(named_characters$Asian >= 2, na.rm = TRUE) * (Ethnicity == "Asian") +
-            sum(named_characters$Hispanic >= 2, na.rm = TRUE) * (Ethnicity == "Hispanic")
+    black_t1 = ifelse(Total_Assigned_Black >= 2, 1, 0),
+    hispanic_t1 = ifelse(Total_Assigned_Hispanic >= 2, 1, 0),
+    asian_t1 = ifelse(Total_Assigned_Asian >= 2, 1, 0)
   )
 
-print(result_df)
+# Assuming 'black_t1', 'hispanic_t1', and 'asian_t1' are the columns we want to add
+columns_to_add <- c("black_t1", "hispanic_t1", "asian_t1")
 
-```
+# Left join only specific columns from movies_simpson_named to thanos_endgame
+thanos_endgame <- left_join(
+  thanos_endgame,
+  movies_simpson_named %>% select(Movie.ID, all_of(columns_to_add)),
+  by = c("imdb.com_imdbid" = "Movie.ID")
+)
 
-
-```{r echo = FALSE}
-thanos_endgame <- read_csv("~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv", 
-                           col_types = cols(imdb.com_releasedate = col_datetime(format = "%Y-%d-%m")))
 
 thanos_endgame <- left_join(thanos_endgame, named_air_condit, by = c("imdb.com_imdbid" = "tt_number"))
 
-write.csv(thanos_endgame, "~/Master/Thesis/gen/data-preparation/output/thanos_endgame.csv")
 
-```
+write.csv(thanos_endgame, "~/Master/Thesis/gen/data-preparation/output/thanos_endgame_air.csv")
 
-
-
-
-
-
-
-
-# Paper doing name recognition https://aclanthology.org/N18-1200.pdf 
-
-# Here we also would like to see if the results differ before and after 2016. Seeing if people from minoritiy groups gained more named character positions
-
-```{r echo=FALSE}
-thanos <- left_join(thanos, named_characters , by = c("imdb.com_imdbid" = "IMDb ID"))
-```
-
-```{r echo=FALSE}
-# Categorize the data into "before 2015" and "after 2015"
-thanos <- thanos %>%
-  mutate(Category = ifelse(imdb.com_year < 2015, "Before 2015", "After 2015"))
-
-# Calculate average counts exceeding 2 for "Black" and "Total_Assigned_Black" in each category
-average_exceeding_2 <- thanos %>%
-  group_by(Category) %>%
-  summarise(
-    Black = mean(Black[Black >= 2], na.rm = TRUE),
-    Total_Assigned_Black = mean(Total_Assigned_Black[Total_Assigned_Black >= 2], na.rm = TRUE)
-  )
-
-# Reshape the data for plotting
-average_long <- average_exceeding_2 %>%
-  pivot_longer(cols = c(Black, Total_Assigned_Black),
-               names_to = "Variable", 
-               values_to = "Average_Count")
-
-# Create the bar plot
-ggplot(average_long, aes(x = Category, y = Average_Count, fill = Variable)) +
-  geom_bar(stat = "identity", position = position_dodge()) +
-  labs(title = "Comparison of Average Counts Exceeding 2 (Black vs. Total_Assigned_Black)",
-       x = "Category (Before 2015 vs. After 2015)") +
-  theme_minimal()
 ```
