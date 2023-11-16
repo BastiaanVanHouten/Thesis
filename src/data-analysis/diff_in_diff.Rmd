@@ -394,6 +394,7 @@ model_coefficients_with_stars <- model_coefficients_with_stars %>%
     combined_estimate = paste(estimate, significance, sep = " ") # Creating a new variable by concatenating 'estimate' and 'significance'
   )
 
+
 model_coefficients_pivot <- model_coefficients_with_stars %>%
   select(-std.error, -statistic, -p.value, -estimate, -significance) %>%  # Remove unnecessary columns
   spread(key = model, value = combined_estimate)

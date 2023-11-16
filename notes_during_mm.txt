@@ -21,3 +21,14 @@ Series.
 Multi collinearity explanaition in the notes. 
 
 Explain which model is perferred.  
+
+
+Seasonality with weeks not months. Add a trend variable. 
+model to dataset. DT_linear_model <- setDT(tidy(linear_model))
+stability, exclude observations samples 
+
+Show the actual R squared. By taking the exponents of the expected values by the models. 
+
+
+
+laatste 2 pakken. 
