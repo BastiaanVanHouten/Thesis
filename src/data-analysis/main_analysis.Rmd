@@ -99,6 +99,16 @@ df_clean$Winter <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(12, 1, 2),
 
 ```
 
+# added this because the main analysis focus swicthed
+```{r}
+df_clean <- df_clean[complete.cases(df_clean$Hispanic_condition_t2), ]
+
+# Remove duplicates based on all columns
+df_clean <- distinct(df_clean)
+
+```
+
+
 ```{r echo = FALSE}
 df_clean <- df_clean %>%
   filter(!is.na(Avg_Rank_Third_Year)) %>%
@@ -155,6 +165,10 @@ kable(table_data,
        caption = "Descriptive Statistics for Continuous Variables",
        row.names = FALSE)
 
+
+
+# Write the data frame to an Excel file
+write.xlsx(table_data, file = "Descriptive_Statistics.xlsx", sheetName = "Descriptive_Statistics", rowNames = FALSE)
 ```
 
 # descriptive stats dummy variables
@@ -179,9 +193,9 @@ other_dummy_vars <- c("Spring", "Summer", "Fall", "Winter",  "imdb.com_basedonbo
 
 
 # Create empty data frames to store the results for each group
-year_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0))
-genre_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0))
-other_dummy_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0))
+year_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0), row.names = NULL)
+genre_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0), row.names = NULL)
+other_dummy_result <- data.frame(Variable_name = character(0), N = numeric(0), Percentage = numeric(0), row.names = NULL)
 
 # Calculate the frequency statistics and percentages for each group
 total_observations <- nrow(df_clean)
@@ -194,19 +208,22 @@ for (variable in c(years, genres, other_dummy_vars)) {
         year_result <- rbind(year_result, data.frame(
             Variable_name = variable,
             N = freq_table[2],  # Count for value 1 (assuming 1 is the second level)
-            Percentage = (freq_table[2] / total_observations) * 100
+            Percentage = (freq_table[2] / total_observations) * 100,
+            row.names = NULL
         ))
     } else if (variable %in% genres) {
         genre_result <- rbind(genre_result, data.frame(
             Variable_name = variable,
             N = freq_table[2],
-            Percentage = (freq_table[2] / total_observations) * 100
+            Percentage = (freq_table[2] / total_observations) * 100,
+            row.names = NULL
         ))
     } else if (variable %in% other_dummy_vars) {
         other_dummy_result <- rbind(other_dummy_result, data.frame(
             Variable_name = variable,
             N = freq_table[2],
-            Percentage = (freq_table[2] / total_observations) * 100
+            Percentage = (freq_table[2] / total_observations) * 100,
+            row.names = NULL
         ))
     }
 }
@@ -216,7 +233,6 @@ year_result <- year_result %>% arrange(desc(N))
 genre_result <- genre_result %>% arrange(desc(N))
 other_dummy_result <- other_dummy_result %>% arrange(desc(N))
 
-
 # Print the results for each group in separate tables using kable
 cat("Years\n")
 kable(year_result, align = "c")
@@ -224,6 +240,25 @@ cat("\nGenres\n")
 kable(genre_result, align = "c")
 cat("\nOther Dummy Variables\n")
 kable(other_dummy_result, align = "c")
+
+# Specify the file path where you want to save the Excel file
+excel_file_path <- "dummyvariables.xlsx"
+
+# Create a function to write a data frame to an Excel sheet
+write_to_excel <- function(data, sheet_name) {
+  if (!file.exists(excel_file_path)) {
+    # If the file doesn't exist, create a new one and write the data
+    write.xlsx(data, file = excel_file_path, sheetName = sheet_name, rowNames = FALSE)
+  } else {
+    # If the file exists, append the data to the specified sheet
+    write.xlsx(data, file = excel_file_path, sheetName = sheet_name, append = TRUE, rowNames = FALSE)
+  }
+}
+
+# Write the results to separate Excel sheets
+write_to_excel(year_result, "Years")
+write_to_excel(genre_result, "Genres")
+write_to_excel(other_dummy_result, "Other_Dummy_Variables")
 
 ```
 

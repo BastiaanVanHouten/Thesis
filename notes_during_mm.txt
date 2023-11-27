@@ -32,3 +32,5 @@ Show the actual R squared. By taking the exponents of the expected values by the
 
 
 laatste 2 pakken. 
+
+Show other sources have taken a smaller sample than I have. 

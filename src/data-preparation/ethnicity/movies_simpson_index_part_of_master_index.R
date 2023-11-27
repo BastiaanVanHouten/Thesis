@@ -5,10 +5,22 @@ library(readr)
 actors_with_ethnicity <- read.csv("../../../gen/data-preparation/output/actors_with_ethnicity.csv")
 
 
+
+actors_with_ethnicity <- actors_with_ethnicity %>%
+    filter(Movie.ID %in% df_clean_AIR$imdb.com_imdbid)
+
+
 # first clean for uncredited and asian is not NA
 subset <- actors_with_ethnicity %>%
     filter(!is.na(asian) & !grepl("uncredited", Character, ignore.case = TRUE))
 
+
+
+unique_subset <- subset %>%
+    distinct(Cast.Member.Name, .keep_all = TRUE)
+
+
+num_na_confidence <- sum(is.na(unique_subset$confidence))
 
 
 # Define the thresholds
@@ -53,37 +65,18 @@ subset <- subset %>%
         Highest_Divided_By_Sum = Highest_Probability / (Highest_Probability + Second_Highest_Probability)
     )
 
-subset <- subset %>%
-    mutate(
-        Second_Highest_Divided_By_Sum = Second_Highest_Probability / (Highest_Probability + Second_Highest_Probability)
-    )
 
 subset <- subset %>%
     mutate(
         None_Assigned = ifelse(rowSums(dplyr::select(., starts_with("Assigned"))) == 0, 1, 0)
     ) %>%
     mutate(
-        Assigned_Asian = case_when(
-            None_Assigned == 1 & asian == Highest_Probability ~ Highest_Divided_By_Sum,
-            None_Assigned == 1 & asian == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
-            TRUE ~ Assigned_Asian
-        ),
-        Assigned_Black = case_when(
-            None_Assigned == 1 & black == Highest_Probability ~ Highest_Divided_By_Sum,
-            None_Assigned == 1 & black == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
-            TRUE ~ Assigned_Black
-        ),
-        Assigned_Hispanic = case_when(
-            None_Assigned == 1 & hispanic == Highest_Probability ~ Highest_Divided_By_Sum,
-            None_Assigned == 1 & hispanic == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
-            TRUE ~ Assigned_Hispanic
-        ),
-        Assigned_White = case_when(
-            None_Assigned == 1 & white == Highest_Probability ~ Highest_Divided_By_Sum,
-            None_Assigned == 1 & white == Second_Highest_Probability ~ Second_Highest_Divided_By_Sum,
-            TRUE ~ Assigned_White
-        )
+        Assigned_Asian = ifelse(None_Assigned == 1 & asian == Highest_Probability & Highest_Divided_By_Sum > 0.6, 1, Assigned_Asian),
+        Assigned_Black = ifelse(None_Assigned == 1 & black == Highest_Probability & Highest_Divided_By_Sum > 0.6, 1, Assigned_Black),
+        Assigned_Hispanic = ifelse(None_Assigned == 1 & hispanic == Highest_Probability & Highest_Divided_By_Sum > 0.6, 1, Assigned_Hispanic),
+        Assigned_White = ifelse(None_Assigned == 1 & white == Highest_Probability & Highest_Divided_By_Sum > 0.6, 1, Assigned_White)
     )
+
 
 
 

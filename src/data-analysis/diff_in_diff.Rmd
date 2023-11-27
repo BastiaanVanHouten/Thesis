@@ -25,6 +25,8 @@ library(kableExtra)
 library(corrplot)
 library(lmtest)
 library(sandwich)
+library(tidyr)
+library(openxlsx)
 
 
 
@@ -115,7 +117,7 @@ df_clean$Winter <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(12, 1, 2),
 # Going for the Diff in Diff analysis
 <we first removed all ranks for the dates that were before the release of the movies 
 ```{r echo = FALSE}
-df_clean$treatment <- ifelse(df_clean$simpson_index > 0.3627456, 1, 0)
+df_clean$treatment <- ifelse(df_clean$t1 > 0.3627456, 1, 0)
 
 movie_ranks <- movie_ranks %>%
     left_join(select(df_clean, imdb.com_imdbid, treatment), 
@@ -151,7 +153,7 @@ ggplot() +
   geom_line(data = treatment_group, aes(x = Date, y = avg_rank, color = "Treatment Group"), size = 1) +
   geom_line(data = control_group, aes(x = Date, y = avg_rank, color = "Control Group"), size = 1) +
   labs(title = "Average Ranking Over Time",
-       x = "Date/Year",
+       x = "Date",
        y = "Average Ranking") +
   scale_color_manual(values = c("Treatment Group" = "gray", "Control Group" = "black")) +
   theme_minimal()
@@ -171,6 +173,10 @@ summary(model_diff)
 #running diff in diff movie ranks with t3
 ```{r}
 df_clean_AIR <- df_clean[complete.cases(df_clean$Hispanic_condition_t2), ]
+
+df_clean_AIR <- df_clean_AIR %>%
+  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate),
+         after_jan_2015 = as.numeric(imdb.com_releasedate > as.Date("2015-03-01")))
 
 movie_ranks_AIR <- movie_ranks %>%
     filter(Movie_ID %in% df_clean_AIR$imdb.com_imdbid)
@@ -230,7 +236,7 @@ model_step <- lm(log(Avg_Rank_Third_Year) ~
                 `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` +`2018` + `2019`
                # Adding the year dummy variables to the model (excluding 2000)
                 ,
-            data = df_clean)
+            data = df_clean_AIR)
 
 
 # print model 
@@ -269,7 +275,7 @@ model_step_b <- lm(log(Avg_Rank_Third_Year) ~
                 Fall +
                # Adding the year dummy variables to the model (excluding 2000)
                 `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
-            data = df_clean)
+            data = df_clean_AIR)
 
 
 
@@ -311,7 +317,7 @@ model_step_b_t1 <- lm(log(Avg_Rank_Third_Year) ~
                 Fall +
                # Adding the year dummy variables to the model (excluding 2000)
                 `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` ,
-            data = df_clean)
+            data = df_clean_AIR)
 
 
 
@@ -352,7 +358,7 @@ model_step_b_t2 <- lm(log(Avg_Rank_Third_Year) ~
                 Fall +
                # Adding the year dummy variables to the model (excluding 2000)
                 `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
-            data = df_clean)
+            data = df_clean_AIR)
 
 
 
@@ -399,8 +405,10 @@ model_coefficients_pivot <- model_coefficients_with_stars %>%
   select(-std.error, -statistic, -p.value, -estimate, -significance) %>%  # Remove unnecessary columns
   spread(key = model, value = combined_estimate)
 
-# Writing the model summaries to an Excel file
-write.xlsx(model_coefficients_pivot, "../../model_coefficients_diff_diff.xlsx")
+library(openxlsx)
+
+# Writing the model summaries to an Excel file using openxlsx
+write.xlsx(model_coefficients_pivot, file = "../../model_coefficients_diff_diff.xlsx")
 
 
 
@@ -410,8 +418,13 @@ write.xlsx(model_coefficients_pivot, "../../model_coefficients_diff_diff.xlsx")
 
 # running step dummy with t1 air 
 ```{r echo=FALSE}
+
+df_2015 <- df_clean %>%
+    filter(imdb.com_year >= 2016)
+    
+
 # Create the main regression model
-model_step_b_t1_AIR <- lm(log(Avg_Rank_Third_Year) ~
+model_step_b_t1 <- lm(log(Avg_Rank_Third_Year) ~
                 hispanic_t1 * after_jan_2015 +
                 black_t1* after_jan_2015 +
                 asian_t1 * after_jan_2015 +
@@ -445,7 +458,7 @@ model_step_b_t1_AIR <- lm(log(Avg_Rank_Third_Year) ~
 
 
 # print model 
-summary(model_step_b_t1_AIR)
+summary(model_step_b_t1)
 ```
 
 

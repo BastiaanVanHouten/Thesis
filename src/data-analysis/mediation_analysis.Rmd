@@ -664,10 +664,43 @@ model_path_b_t1 <- lm(log(Avg_Rank_Third_Year) ~
                 Fall +
                # Adding the year dummy variables to the model (excluding 2000)
                 `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
-            data = df_clean)
+            data = df_clean_AIR)
 
 summary(model_path_b_t1)
 ```
+## Path B
+```{r echo = FALSE, message= FALSE, warning=FALSE}
+# Create the main regression model
+model_path_b_default <- lm(log(Avg_Rank_Third_Year) ~
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+            data = df_clean_AIR)
+
+summary(model_path_b_default)
+```
+
 
 # path B t1 AIR dataset
 ## Path B
