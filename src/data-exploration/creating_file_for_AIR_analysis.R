@@ -1,7 +1,7 @@
 # Load the necessary libraries
 library(dplyr)
 
-subset <- read_csv("../../gen/actors_with_assigned_ethnicity.csv")
+subset <- read_csv("../../data/actors_with_assigned_ethnicity.csv")
 
 
 

@@ -71,6 +71,7 @@ movie_ranks <- movie_ranks %>%
 ```
 
 <sub> only possible explanation that top 250 or etc. is a very difficult to get to. The movies that have been published the more competitive it is to have a movie that keeps remaining popular.Therefore, it is logical that the movies that are newer are less popular after three years. Nevertheless, it is very difficult to explain why these movies popularity dropped so much after 2011.  
+
 # This would be the regression of the main analysis
 <sub> to achieve homoskedacity we did filter out the movies that were before 2000. But we did not filter out outliners.  
 
@@ -98,7 +99,7 @@ df_clean$log_dir_power <- log(df_clean$the_numbers_com_dirpower_rank * 100  + sm
 df_clean$log_metascore <- log(df_clean$Metascore + small_constant)
 df_clean$log_starpower <-log(df_clean$Total_Star_Power * 100 + small_constant)
 df_clean$log_MPAA <- log(df_clean$mpaa_numeric + small_constant)
-df_clean$log_sequel <- log(df_clean$imdb.com_sequel + small_constant)
+df_clean$imdb.com_sequel <- ifelse(df_clean$imdb.com_sequel == 0, 0, 1)
 
 
 # Seasonality
@@ -108,185 +109,21 @@ df_clean$Summer <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(6, 7, 8), 
 df_clean$Fall <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(9, 10, 11), 1, 0)
 df_clean$Winter <- ifelse(month(df_clean$imdb.com_releasedate) %in% c(12, 1, 2), 1, 0)
 
+df_clean$imdb.com_year <- as.factor(df_clean$imdb.com_year)
+
 
 ```
 
+# running step dummy
 
-
-
-# Going for the Diff in Diff analysis
-<we first removed all ranks for the dates that were before the release of the movies 
-```{r echo = FALSE}
-df_clean$treatment <- ifelse(df_clean$t1 > 0.3627456, 1, 0)
-
-movie_ranks <- movie_ranks %>%
-    left_join(select(df_clean, imdb.com_imdbid, treatment), 
-              by = c("Movie_ID" = "imdb.com_imdbid"))
-
-```
-
-
-
-< we are checking for a parallel trend> 
-
-```{r echo = FALSE}
-# Assuming your data frame is named movie_ranks
-
-# Filter the data into treatment and control groups
-treatment_group <- movie_ranks %>%
-  filter(treatment == 1) %>%
-  group_by(Date) %>%
-  summarise(avg_rank = mean(Rank))
-
-
-control_group <- movie_ranks %>%
-  filter(treatment == 0) %>%
-  group_by(Date) %>%
-  summarise(avg_rank = mean(Rank))
-
-```
-
-
-```{r echo = FALSE}
-# Create the plot
-ggplot() +
-  geom_line(data = treatment_group, aes(x = Date, y = avg_rank, color = "Treatment Group"), size = 1) +
-  geom_line(data = control_group, aes(x = Date, y = avg_rank, color = "Control Group"), size = 1) +
-  labs(title = "Average Ranking Over Time",
-       x = "Date",
-       y = "Average Ranking") +
-  scale_color_manual(values = c("Treatment Group" = "gray", "Control Group" = "black")) +
-  theme_minimal()
-```
-
-#running diff in diff normal movie ranks
-```{r}
-movie_ranks$time_indicator <- as.integer(movie_ranks$Date >= as.Date("2016-02-01"))
-
-model_diff <- lm(Rank ~ treatment * time_indicator, data = movie_ranks)
-
-summary(model_diff)
-
-```
-
-
-#running diff in diff movie ranks with t3
-```{r}
+# running step dummy with t1
+```{r echo=FALSE}
 df_clean_AIR <- df_clean[complete.cases(df_clean$Hispanic_condition_t2), ]
 
 df_clean_AIR <- df_clean_AIR %>%
   mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate),
          after_jan_2015 = as.numeric(imdb.com_releasedate > as.Date("2015-03-01")))
 
-movie_ranks_AIR <- movie_ranks %>%
-    filter(Movie_ID %in% df_clean_AIR$imdb.com_imdbid)
-
-
-movie_ranks_AIR <- movie_ranks_AIR %>%
-    left_join(select(df_clean_AIR, imdb.com_imdbid, Black_condition_t3, Asian_condition_t3, Hispanic_condition_t3), 
-              by = c("Movie_ID" = "imdb.com_imdbid"))
-
-    
-
-model_diff_black <- lm(Rank ~ time_indicator * Black_condition_t3, data = movie_ranks_AIR)
-model_diff_asian <- lm(Rank ~ time_indicator * Asian_condition_t3, data = movie_ranks_AIR)
-model_diff_hisp<- lm(Rank ~ time_indicator * Hispanic_condition_t3, data = movie_ranks_AIR)
-
-summary(model_diff_black)
-summary(model_diff_asian)
-summary(model_diff_hisp)
-
-```
-
-
-# running step dummy
-```{r echo=FALSE}
-df_clean <- df_clean %>%
-  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate),
-         after_jan_2015 = as.numeric(imdb.com_releasedate > as.Date("2015-03-01")))
-
-
-
-# Create the main regression model
-model_step <- lm(log(Avg_Rank_Third_Year) ~
-                simpson_index * after_jan_2015  +
-                log(boxofficemojo.com_openingtheaters) + 
-                log(imdb.com_runtime) + log(mpaa_numeric) + 
-                log(average_budget) + 
-                imdb.com_sequel + 
-                imdb.com_spinoff +
-                log_remake +
-                imdb.com_basedonbook + 
-                imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
-                imdb.com_basedoncomicbook + 
-                imdb.com_basedonnovel + 
-                imdb.com_basedonshortstory + 
-                log_Nominee +
-                log_Winner +
-                log_dir_power +
-                log_metascore + 
-                log_starpower +
-                 # Include all genre variables
-                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
-            # including seasonality
-                Spring +
-                Summer +
-                Fall +
-                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` +`2018` + `2019`
-               # Adding the year dummy variables to the model (excluding 2000)
-                ,
-            data = df_clean_AIR)
-
-
-# print model 
-summary(model_step)
-```
-
-# step path b T3
-```{r echo=FALSE}
-# Create the main regression model
-model_step_b <- lm(log(Avg_Rank_Third_Year) ~
-                Hispanic_condition_t3 * after_jan_2015 +
-                Black_condition_t3 * after_jan_2015 +
-                Asian_condition_t3 * after_jan_2015 +
-                log(boxofficemojo.com_openingtheaters) + 
-                log(imdb.com_runtime) + log(mpaa_numeric) + 
-                log(average_budget) + 
-                imdb.com_sequel + 
-                imdb.com_spinoff +
-                log_remake +
-                imdb.com_basedonbook + 
-                imdb.com_basedonplay + 
-                imdb.com_basedoncomic + 
-                imdb.com_basedoncomicbook + 
-                imdb.com_basedonnovel + 
-                imdb.com_basedonshortstory + 
-                log_Nominee +
-                log_Winner +
-                log_dir_power +
-                log_metascore + 
-                log_starpower +
-                 # Include all genre variables
-                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
-            # including seasonality
-                Spring +
-                Summer +
-                Fall +
-               # Adding the year dummy variables to the model (excluding 2000)
-                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
-            data = df_clean_AIR)
-
-
-
-# print model 
-summary(model_step_b)
-```
-
-
-
-# running step dummy with t1
-```{r echo=FALSE}
 # Create the main regression model
 model_step_b_t1 <- lm(log(Avg_Rank_Third_Year) ~
                 hispanic_t1 * after_jan_2015 +
@@ -314,9 +151,7 @@ model_step_b_t1 <- lm(log(Avg_Rank_Third_Year) ~
             # including seasonality
                 Spring +
                 Summer +
-                Fall +
-               # Adding the year dummy variables to the model (excluding 2000)
-                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` ,
+                Fall + `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - after_jan_2015,
             data = df_clean_AIR)
 
 
@@ -355,9 +190,7 @@ model_step_b_t2 <- lm(log(Avg_Rank_Third_Year) ~
             # including seasonality
                 Spring +
                 Summer +
-                Fall +
-               # Adding the year dummy variables to the model (excluding 2000)
-                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+                Fall + `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - after_jan_2015,
             data = df_clean_AIR)
 
 
@@ -366,19 +199,476 @@ model_step_b_t2 <- lm(log(Avg_Rank_Third_Year) ~
 summary(model_step_b_t2)
 ```
 
+# step path b T3
+```{r echo=FALSE}
+# Create the main regression model
+model_step_b_t3 <- lm(log(Avg_Rank_Third_Year) ~
+                Hispanic_condition_t3 * after_jan_2015 +
+                Black_condition_t3 * after_jan_2015 +
+                Asian_condition_t3 * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall + `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - after_jan_2015,
+            data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b_t3)
+
+
+```
+
+
+# VIF values 
+```{r echo=FALSE, message= FALSE, warning=FALSE}
+# Calculate VIF for the first model
+
+
+
+vif_c <- vif(model_step_b_t1)
+
+print(vif_c)
+
+vif_c <- vif(model_step_b_t2)
+
+print(vif_c)
+
+vif_c <- vif(model_step_b_t3)
+
+print(vif_c)
+
+```
+
+
+## Delta rule asian t1 ## 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t1)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("asian_t1", "after_jan_2015:asian_t1"), c("asian_t1", "after_jan_2015:asian_t1")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_asian_t1 <- sum(model_step_b_t1$coefficients[c("asian_t1", "after_jan_2015:asian_t1")])
+
+# t value = effect / SE
+t_value_asian_t1 <- coef_value_asian_t1 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_asian_t1 <- 2 * pt(abs(t_value_asian_t1), model_step_b_t1$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_asian_t1))
+print(c("P-Value:", p_value_asian_t1))
+```
+
+# Delta rule asian T2 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t2)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("Asian_condition_t2", "after_jan_2015:Asian_condition_t2"), c("Asian_condition_t2", "after_jan_2015:Asian_condition_t2")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_asian_t2 <- sum(model_step_b_t2$coefficients[c("Asian_condition_t2", "after_jan_2015:Asian_condition_t2")])
+
+# t value = effect / SE
+t_value_asian_t2 <- coef_value_asian_t2 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_asian_t2 <- 2 * pt(abs(t_value_asian_t2), model_step_b_t2$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_asian_t2))
+print(c("P-Value:", p_value_asian_t2))
+
+```
+
+# Delta rule asian T3 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t3)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("Asian_condition_t3", "after_jan_2015:Asian_condition_t3"), c("Asian_condition_t3", "after_jan_2015:Asian_condition_t3")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_asian_t3 <- sum(model_step_b_t3$coefficients[c("Asian_condition_t3", "after_jan_2015:Asian_condition_t3")])
+
+# t value = effect / SE
+t_value_asian_t3 <- coef_value_asian_t3 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_asian_t3 <- 2 * pt(abs(t_value_asian_t3), model_step_b_t3$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_asian_t3))
+print(c("P-Value:", p_value_asian_t3))
+
+```
+# Delta rule black T1
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t1)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("black_t1", "after_jan_2015:black_t1"), c("black_t1", "after_jan_2015:black_t1")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_black_t1 <- sum(model_step_b_t1$coefficients[c("black_t1", "after_jan_2015:black_t1")])
+
+# t value = effect / SE
+t_value_black_t1 <- coef_value_black_t1 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_black_t1 <- 2 * pt(abs(t_value_black_t1), model_step_b_t1$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_black_t1))
+print(c("P-Value:", p_value_black_t1))
+```
+
+# Delta rule black T2 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t2)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("Black_condition_t2", "after_jan_2015:Black_condition_t2"), c("Black_condition_t2", "after_jan_2015:Black_condition_t2")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_black_t2 <- sum(model_step_b_t2$coefficients[c("Black_condition_t2", "after_jan_2015:Black_condition_t2")])
+
+# t value = effect / SE
+t_value_black_t2 <- coef_value_black_t2 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_black_t2 <- 2 * pt(abs(t_value_black_t2), model_step_b_t2$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_black_t2))
+print(c("P-Value:", p_value_black_t2))
+
+```
+
+# Delta rule black T3 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t3)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("Black_condition_t3", "after_jan_2015:Black_condition_t3"), c("Black_condition_t3", "after_jan_2015:Black_condition_t3")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_black_t3 <- sum(model_step_b_t3$coefficients[c("Black_condition_t3", "after_jan_2015:Black_condition_t3")])
+
+# t value = effect / SE
+t_value_black_t3 <- coef_value_black_t3 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_black_t3 <- 2 * pt(abs(t_value_black_t3), model_step_b_t3$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_black_t3))
+print(c("P-Value:", p_value_black_t3))
+
+```
+
+
+# Delta rule hispanic T1
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t1)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("hispanic_t1", "hispanic_t1:after_jan_2015"), c("hispanic_t1", "hispanic_t1:after_jan_2015")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_hispanic_t1 <- sum(model_step_b_t1$coefficients[c("hispanic_t1", "hispanic_t1:after_jan_2015")])
+
+# t value = effect / SE
+t_value_hispanic_t1 <- coef_value_hispanic_t1 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_hispanic_t1 <- 2 * pt(abs(t_value_hispanic_t1), model_step_b_t1$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_hispanic_t1))
+print(c("P-Value:", p_value_hispanic_t1))
+```
+
+# Delta rule hispanic T2 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t2)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("Hispanic_condition_t2", "Hispanic_condition_t2:after_jan_2015"), c("Hispanic_condition_t2", "Hispanic_condition_t2:after_jan_2015")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_hispanic_t2 <- sum(model_step_b_t2$coefficients[c("Hispanic_condition_t2", "Hispanic_condition_t2:after_jan_2015")])
+
+# t value = effect / SE
+t_value_hispanic_t2 <- coef_value_hispanic_t2 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_hispanic_t2 <- 2 * pt(abs(t_value_hispanic_t2), model_step_b_t2$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_hispanic_t2))
+print(c("P-Value:", p_value_hispanic_t2))
+
+```
+
+# Delta rule hispanic T3 
+```{r}
+# g(theta)
+# expression = an object that captures the structure of the code without evaluating it (i.e. running it)
+g_theta <- expression(b1 + b2)
+
+# take partial derivative with respect to (i) b1 & (ii) b2
+#D(g_theta, "b1")
+#D(g_theta, "b2")
+g_theta_derivatives <- c(D(g_theta, "b1"), D(g_theta, "b2"))
+
+# variance-covariance matrix  
+vcov_multiplicative_model <- vcov(model_step_b_t3)
+#class(vcov_multiplicative_model)
+
+# subset of variance-covariance matrix 
+vcov_subset <- vcov_multiplicative_model[c("Hispanic_condition_t3", "Hispanic_condition_t3:after_jan_2015"), c("Hispanic_condition_t3", "Hispanic_condition_t3:after_jan_2015")]
+
+# show that the diagonals of the vcov are also shown in the model output
+sqrt(0.0005588642)
+
+
+# compute Delta method by hand
+SE_multiplicative_model <- sqrt(t(g_theta_derivatives) %*% vcov_subset %*% g_theta_derivatives)
+
+# extract total effect from model
+coef_value_hispanic_t3 <- sum(model_step_b_t3$coefficients[c("Hispanic_condition_t3", "Hispanic_condition_t3:after_jan_2015")])
+
+# t value = effect / SE
+t_value_hispanic_t3 <- coef_value_hispanic_t3 / SE_multiplicative_model
+
+# p-value (Student's t-distribution)
+p_value_hispanic_t3 <- 2 * pt(abs(t_value_hispanic_t3), model_step_b_t3$df.residual, lower.tail = FALSE)
+
+# Print or use the results as needed
+print(c("T-Value:", t_value_hispanic_t3))
+print(c("P-Value:", p_value_hispanic_t3))
+
+```
+```{r}
+# Create a data frame for the results
+results_df <- data.frame(
+  Ethnicity = c("Asian T1", "Asian T2", "Asian T3", "Black T1", "Black T2", "Black T3", "Hispanic T1", "Hispanic T2", "Hispanic T3"),
+  Coef_Value = numeric(9),
+  T_Value = numeric(9),
+  P_Value = numeric(9)
+)
+
+# Delta rule Asian T1
+results_df[1, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_asian_t1, t_value_asian_t1, p_value_asian_t1)
+
+# Delta rule Asian T2
+results_df[2, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_asian_t2, t_value_asian_t2, p_value_asian_t2)
+
+# Delta rule Asian T3
+results_df[3, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_asian_t3, t_value_asian_t3, p_value_asian_t3)
+
+# Delta rule Black T1
+results_df[4, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_black_t1, t_value_black_t1, p_value_black_t1)
+
+# Delta rule Black T2
+results_df[5, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_black_t2, t_value_black_t2, p_value_black_t2)
+
+# Delta rule Black T3
+results_df[6, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_black_t3, t_value_black_t3, p_value_black_t3)
+
+# Delta rule Hispanic T1
+results_df[7, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_hispanic_t1, t_value_hispanic_t1, p_value_hispanic_t1)
+
+# Delta rule Hispanic T2
+results_df[8, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_hispanic_t2, t_value_hispanic_t2, p_value_hispanic_t2)
+
+# Delta rule Hispanic T3
+results_df[9, c("Coef_Value", "T_Value", "P_Value")] <- c(coef_value_hispanic_t3, t_value_hispanic_t3, p_value_hispanic_t3)
+
+# Print the results data frame
+print(results_df)
+
+```
+
 # comparison path B T1, T2 , T3 
 ```{r echo = FALSE}
 # Get model summaries
 model_summaries <- bind_rows(
   glance(model_step_b) %>% mutate(model = "model_step_b"),
-  glance(model_step) %>% mutate(model = "model_step"),
   glance(model_step_b_t1) %>% mutate(model = "model_step_b_t1"),
   glance(model_step_b_t2) %>% mutate(model = "model_step_b_t2")  # Add model_step_b_t2
 )
 
 # Get model coefficients with significance
 model_coefficients <- bind_rows(
-  tidy(model_step) %>% mutate(model = "model_step"),
   tidy(model_step_b) %>% mutate(model = "model_step_b"),
   tidy(model_step_b_t1) %>% mutate(model = "model_step_b_t1"),  # Add model_step_b_t1_air
   tidy(model_step_b_t2) %>% mutate(model = "model_step_b_t2")  # Add model_step_b_t2
@@ -415,6 +705,407 @@ write.xlsx(model_coefficients_pivot, file = "../../model_coefficients_diff_diff.
 ```
 
 
+
+# Robustness checks 
+
+# running regressions short term
+```{r echo=FALSE}
+
+
+# Assuming 'boxofficemojo.com_openinggross' is the column with currency format
+df_clean_AIR$boxofficemojo.com_openinggross <- as.numeric(gsub("[^0-9.]", "", df_clean_AIR$boxofficemojo.com_openinggross))
+
+model_box_office <- lm(log(boxofficemojo.com_openinggross) ~ log(rank_release), data = df_clean_AIR)
+
+# Calculate the correlation coefficient
+correlation_coefficient <- cor(df_clean_AIR$boxofficemojo.com_openinggross, df_clean_AIR$rank_release)
+
+# Print the correlation coefficient
+cat("Correlation Coefficient:", correlation_coefficient, "\n")
+
+
+summary(model_box_office)
+
+# Create the main regression model
+model_step_b_t1 <- lm(log(boxofficemojo.com_openinggross) ~
+                hispanic_t1 * after_jan_2015 +
+                black_t1* after_jan_2015 +
+                asian_t1 * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - after_jan_2015,
+            data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b_t1)
+
+
+# Create the main regression model
+model_step_b_t2 <- lm(log(rank_release) ~
+                Hispanic_condition_t2 * after_jan_2015 +
+                Black_condition_t2 * after_jan_2015 +
+                Asian_condition_t2 * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - after_jan_2015,
+            data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b_t2)
+
+# Create the main regression model T3
+model_step_b_t3 <- lm(log(boxofficemojo.com_openinggross) ~
+                Hispanic_condition_t3 * after_jan_2015 +
+                Black_condition_t3 * after_jan_2015 +
+                Asian_condition_t3 * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - after_jan_2015,
+            data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b_t3)
+```
+
+
+# running step dummy with total
+```{r echo=FALSE}
+# Create the main regression model
+model_step_b_total <- lm(log(Avg_Rank_Third_Year) ~
+                Total_Assigned_Hispanic * after_jan_2015 +
+                Total_Assigned_Black* after_jan_2015 +
+                Total_Assigned_Asian * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` ,
+            data = df_clean)
+
+
+
+# print model 
+summary(model_step_b_total)
+```
+
+
+
+```{r echo=FALSE}
+df_clean <- df_clean %>%
+  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate),
+         after_jan_2015 = as.numeric(imdb.com_releasedate > as.Date("2015-03-01")))
+
+
+
+# Create the main regression model
+model_step <- lm(log(Avg_Rank_Third_Year) ~
+                simpson_index * after_jan_2015  +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+                as.factor(imdb.com_year)
+               # Adding the year dummy variables to the model (excluding 2000)
+                ,
+            data = df_clean_AIR)
+
+
+# print model 
+summary(model_step)
+```
+
+################# extra  ####################
+# Going for the Diff in Diff analysis
+<we first removed all ranks for the dates that were before the release of the movies 
+
+
+
+#running diff in diff movie ranks with t3
+```{r}
+df_clean_AIR <- df_clean[complete.cases(df_clean$Hispanic_condition_t2), ]
+
+df_clean_AIR <- df_clean_AIR %>%
+  mutate(imdb.com_releasedate = as.Date(imdb.com_releasedate),
+         after_jan_2015 = as.numeric(imdb.com_releasedate > as.Date("2015-03-01")))
+
+movie_ranks_AIR <- movie_ranks %>%
+    filter(Movie_ID %in% df_clean_AIR$imdb.com_imdbid)
+
+
+movie_ranks_AIR <- movie_ranks_AIR %>%
+    left_join(select(df_clean_AIR, imdb.com_imdbid, Black_condition_t3, Asian_condition_t3, Hispanic_condition_t3), 
+              by = c("Movie_ID" = "imdb.com_imdbid"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+#### this alters the independent variables  ######
+
+# path B t1 AIR dataset with non named 
+```{r echo = FALSE, message= FALSE, warning=FALSE}
+
+non_named_condition <- read_csv("../../data/AIR_analysis/movies_with_air_condition.csv")
+
+
+# Assuming 'tt_number' and 'imdb.com_imdbd' are the common identifiers
+df_clean_AIR <- df_clean_AIR %>%
+  left_join(
+    non_named_condition %>% 
+      select(tt_number, 
+             Hispanic_condition_t2 = Hispanic_condition_t2, 
+             Hispanic_condition_t3 = Hispanic_condition_t3, 
+             Asian_condition_t3 = Asian_condition_t3, 
+             Asian_condition_t2 = Asian_condition_t2, 
+             Black_condition_t2 = Black_condition_t2, 
+             Black_condition_t3 = Black_condition_t3),
+    by = c("imdb.com_imdbid" = "tt_number" )
+  )
+
+df_clean_AIR <- df_clean_AIR %>%
+  mutate(
+    nnh_1 = if_else(Total_Assigned_Hispanic >= 2, "1", "0"),
+    nna_1 = if_else(Total_Assigned_Asian >= 2, "1", "0"),
+    nnb_1 = if_else(Total_Assigned_Black >= 2, "1", "0")
+  )
+
+
+df_clean_AIR$boxofficemojo.com_openinggross <- as.numeric(df_clean_AIR$boxofficemojo.com_openinggross)
+
+
+# Create the main regression model
+model_step_b <- lm(log(boxofficemojo.com_openinggross) ~
+                Hispanic_condition_t3.y * after_jan_2015 +
+                Black_condition_t3.y * after_jan_2015 +
+                Asian_condition_t3.y * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+            data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b)
+
+
+
+# Create the main regression model
+model_step_b_t2 <- lm(log(Avg_Rank_Third_Year) ~
+                Hispanic_condition_t2.y * after_jan_2015 +
+                Black_condition_t2.y * after_jan_2015 +
+                Asian_condition_t2.y * after_jan_2015 +
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019`,
+            data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b_t2)
+
+
+
+
+
+model_path_b_t1 <- lm(log(Avg_Rank_Third_Year) ~
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                nnh_1 * after_jan_2015+
+                nna_1 * after_jan_2015+
+                nnb_1 * after_jan_2015+
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall +
+               # Adding the year dummy variables to the model (excluding 2000)
+                `2001` + `2002` + `2003` + `2004` + `2005` + `2006` + `2007` + `2008` + `2009` + `2010` + `2011` + `2012` + `2013` + `2014` + `2015` + `2016` + `2017` + `2018` + `2019` - 1,
+            data = df_clean_AIR)
+
+summary(model_path_b_t1)
+
+
+```
 
 # running step dummy with t1 air 
 ```{r echo=FALSE}
@@ -462,7 +1153,98 @@ summary(model_step_b_t1)
 ```
 
 
+
+
+
+
+
+
 ############### extra #################################
+
+## year as factore
+
+
+# step path b T3
+```{r echo=FALSE}
+
+df_clean_AIR$imdb.com_year <- as.factor(df_clean_AIR$imdb.com_year)
+
+
+# Create the main regression model
+model_step_b <- lm(log(Avg_Rank_Third_Year) ~
+                hispanic_t1 * imdb.com_year +
+                black_t1 * imdb.com_year +
+                asian_t1 * imdb.com_year +    
+                log(boxofficemojo.com_openingtheaters) + 
+                log(imdb.com_runtime) + log(mpaa_numeric) + 
+                log(average_budget) + 
+                imdb.com_sequel + 
+                imdb.com_spinoff +
+                log_remake +
+                imdb.com_basedonbook + 
+                imdb.com_basedonplay + 
+                imdb.com_basedoncomic + 
+                imdb.com_basedoncomicbook + 
+                imdb.com_basedonnovel + 
+                imdb.com_basedonshortstory + 
+                log_Nominee +
+                log_Winner +
+                log_dir_power +
+                log_metascore + 
+                log_starpower +
+                 # Include all genre variables
+                Action + Adventure + Comedy + Fantasy + Crime + Drama + Mystery + Thriller + Romance + Sci.Fi + Biography + Sport + War + Family + Musical + History + Horror + Music + Documentary + Western +
+            # including seasonality
+                Spring +
+                Summer +
+                Fall,  data = df_clean_AIR)
+
+
+
+# print model 
+summary(model_step_b)
+```
+< we are checking for a parallel trend> 
+
+```{r echo = FALSE}
+# Assuming your data frame is named movie_ranks
+
+# Filter the data into treatment and control groups
+treatment_group <- movie_ranks %>%
+  filter(treatment == 1) %>%
+  group_by(Date) %>%
+  summarise(avg_rank = mean(Rank))
+
+
+control_group <- movie_ranks %>%
+  filter(treatment == 0) %>%
+  group_by(Date) %>%
+  summarise(avg_rank = mean(Rank))
+
+```
+
+
+```{r echo = FALSE}
+# Create the plot
+ggplot() +
+  geom_line(data = treatment_group, aes(x = Date, y = avg_rank, color = "Treatment Group"), size = 1) +
+  geom_line(data = control_group, aes(x = Date, y = avg_rank, color = "Control Group"), size = 1) +
+  labs(title = "Average Ranking Over Time",
+       x = "Date",
+       y = "Average Ranking") +
+  scale_color_manual(values = c("Treatment Group" = "gray", "Control Group" = "black")) +
+  theme_minimal()
+```
+
+#running diff in diff normal movie ranks
+```{r}
+movie_ranks$time_indicator <- as.integer(movie_ranks$Date >= as.Date("2016-02-01"))
+
+model_diff <- lm(Rank ~ treatment * time_indicator, data = movie_ranks)
+
+summary(model_diff)
+
+```
 
 
 ```{r echo=FALSE}

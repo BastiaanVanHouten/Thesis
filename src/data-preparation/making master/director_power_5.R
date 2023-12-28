@@ -46,7 +46,7 @@ result_df <- result_df %>%
   left_join(
     director_power %>%
       select(year, imdb_com_director_id, the_numbers_com_dirpower_rank),
-    by = c("imdb.com_year" = "year",
+    by = c("imdb.com_year_minus_1" = "year",
            "imdb.com_cast_id" = "imdb_com_director_id")
   )
 

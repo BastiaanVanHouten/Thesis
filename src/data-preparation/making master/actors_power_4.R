@@ -10,23 +10,28 @@ final_master_ranks <- final_master_ranks %>%
   separate(imdb.com_actors, into = c("actor1", "actor2", "actor3", "actor4"), sep = ", ")
 
 
+
+final_master_ranks <- final_master_ranks %>%
+    mutate(imdb.com_year_minus_1 = imdb.com_year - 1)
+
+
 # Join the two datasets based on release year and actors' names
 result <- final_master_ranks %>%
   left_join(the_numbers_com_stars %>%
               select(year, imdb_com_star_name, the_numbers_com_starpower_rank), 
-            by = c("imdb.com_year" = "year", 
+            by = c("imdb.com_year_minus_1" = "year", 
                    "actor1" = "imdb_com_star_name")) %>%
   left_join(the_numbers_com_stars %>%
               select(year, imdb_com_star_name, the_numbers_com_starpower_rank), 
-            by = c("imdb.com_year" = "year", 
+            by = c("imdb.com_year_minus_1" = "year", 
                    "actor2" = "imdb_com_star_name")) %>%
   left_join(the_numbers_com_stars %>%
               select(year, imdb_com_star_name, the_numbers_com_starpower_rank), 
-            by = c("imdb.com_year" = "year", 
+            by = c("imdb.com_year_minus_1" = "year", 
                    "actor3" = "imdb_com_star_name")) %>%
   left_join(the_numbers_com_stars %>%
               select(year, imdb_com_star_name, the_numbers_com_starpower_rank), 
-            by = c("imdb.com_year" = "year", 
+            by = c("imdb.com_year_minus_1" = "year", 
                    "actor4" = "imdb_com_star_name"))
 
 # Calculate the total "star power" for each movie
