@@ -82,22 +82,6 @@ levels (T1, T2, T3):
  (T2) Two named {ethnicity} characters appear in a scene together.
  (T3) Two named {ethnicity} characters appear in a scene together without a white character. 
 
-An example for such a conversation would be a conversation between the main character and  his wife collected from the film script ‘12 years a slave’ :
-      ANNE
- Solomon...
-     SOLOMON
- Come, Anne. Jump. 
-      ANNE
- I will not ruin my dress. Catch me!
-     SOLOMON
- I will catch you, Anne. I will.
-     ANNE
- You will.
-
-Even though the conversation is not very thorough or meaningful, it is between two named 
-ethnic minority characters, and no white people are present in the scene. Therefore, the film
-will have the condition for all levels for the Black ethnicity. 
-
 As can be seen the modified Bechdel test similar to the original requires the actors to be named. 
 Therefore, the first step of conducting the modified Bechdel test was to create a process which 
 removed ‘generic’ characters from the dataset. To filter generic characters from the dataset, I 
