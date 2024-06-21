@@ -11,7 +11,9 @@ well as a clear operationalization of the variables. Given the subjective nature
 Authentic Inclusive Representation, the Bechdel Test was employed as a quantitative measure 
 for this concept. Notably, it will be discussed across three distinct levels, as defined by the 
 Bechdel test, elaborated in the operationalization section.
+
 Main data sources
+
 The main data sources for this study are the Internet Movie Database (IMDb), The Numbers, 
 and The Movie Database (TMDB). IMDB is the most important source, as it will be used to 
 measure Long-term Audience Engagement. While IMDb users and the general filmgoing 
