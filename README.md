@@ -20,6 +20,7 @@ measure Long-term Audience Engagement. While IMDb users and the general filmgoin
 population differ somewhat in demographics, previous research has used IMDB data numerous 
 times demonstrating the capability of using it for the broader filmgoing audience (e.g. Ghiassi
 et al., 2017; Partha et al., 2019; Apala et al., 2013).
+
 Sample
 The films for the sample were chosen carefully and based on specific criteria. IMDB started in 
 1996 but was not widely used until 2003 so the sample was limited to films released after the 
