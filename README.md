@@ -3,6 +3,7 @@ The repository for my thesis. I saved the large files into my local repository.
 
 
 Research Methodology study 1
+
 This study aims to investigate the relationship between Racial Authentic Inclusive 
 Representation and Long-term Audience Engagement in Hollywood films. The following 
 sections will provide a detailed overview of the data collection and sampling procedures, as 
