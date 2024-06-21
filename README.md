@@ -22,6 +22,7 @@ times demonstrating the capability of using it for the broader filmgoing audienc
 et al., 2017; Partha et al., 2019; Apala et al., 2013).
 
 Sample
+
 The films for the sample were chosen carefully and based on specific criteria. IMDB started in 
 1996 but was not widely used until 2003 so the sample was limited to films released after the 
 year 2000 (for a further explanation, see the dependent variable operationalization). 
@@ -33,8 +34,9 @@ To measure Racial Authentic Inclusive Representation, data on interactions betwe
 required (for a further explanation, see Racial Authentic Inclusive Representation variable 
 operationalization). Observations with missing data which appeared to be random were 
 eliminated. After applying all criteria, the sample consisted of 1,178 films. 
-17
+
 Variable operationalization
+
 Long-term Audience Engagement (Dependent Variable)
 Long-term Audience Engagement was operationalized using IMDb's MovieMeter, a metric 
 derived from popularity rankings. A score of one means that the film was the most popular with 
@@ -45,7 +47,9 @@ engagement, I measured Long-term Audience Engagement as the average ranking of a
 over a one-year period, starting in the third year after its release. I chose this metric because it 
 shows how engaged audiences are with a film after a few years, and the average reduces the 
 influence of any spikes or certain drops in the engagement of audiences with a film. 
+
 Ethnicity
+
 To determine actors’ ethnicity, I used the Kairos API, a deep learning algorithm that can detect 
 ethnicity through facial recognition. I collected the profile pictures of the actors and actresses 
 with a scraper from IMDb and processed these with the API. The Kairos API is chosen because 
@@ -54,12 +58,13 @@ films included in the sample of this study a total of 62,834 characters were pre
 includes instances where an actor or actress appeared in multiple films. It also included 
 uncredited people (7,251). The Kairos API analyzed 26,891 images found on IMDb of the total 
 of 32,513 unique actors and actresses. 
+
 For the remaining imageless people the ethnicities were based on their first and last name using 
 the R package Rethnicity, which has an accuracy of around 80%. People not having an image 
-on IMDB is correlated with not having played a significant role in a film 3
-. Therefore, they are assumed to be less important for the analysis.
+on IMDB is correlated with not having played a significant role in a film 3. Therefore, they are assumed to be less important for the analysis.
 
 Racial Authentic Inclusive Representation (Independent Variables) 
+
 Quantifying the concept of Racial Authentic Inclusive Representation in films has resulted in 
 researchers using the Bechdel-Wallace test (1985), originally designed to measure
 representation of women in a film (Agarwal, 2015). The Bechdel test is chosen as a tool for 
@@ -68,30 +73,31 @@ study’s specific focus (Lazar et al., 2020), its potential for automation, and
 (Argarwal, 2015). The original Bechdel test is structured around three levels, (T1) The movie 
 has to have at least two named women in it (T2) who talk to each other, (T3) about something 
 other than a man (Bechdel-Wallace, 1985)
+
 Building on this foundation, the Bechdel test was adapted, drawing inspiration from Lazar et 
 al. (2020). The measurement of Racial Authentic Inclusive Representation for the three distinct 
 minority ethnicities in this study allows for an examination of the concept across three distinct 
 levels (T1, T2, T3):
-(T1) Two named {ethnicity} characters appear in film X.
-(T2) Two named {ethnicity} characters appear in a scene together.
-(T3) Two named {ethnicity} characters appear in a scene together without a white
-character. 
-An example for such a conversation would be a conversation between the main character and 
-his wife collected from the film script ‘12 years a slave’ :
-ANNE
+ (T1) Two named {ethnicity} characters appear in film X.
+ (T2) Two named {ethnicity} characters appear in a scene together.
+ (T3) Two named {ethnicity} characters appear in a scene together without a white character. 
+
+An example for such a conversation would be a conversation between the main character and  his wife collected from the film script ‘12 years a slave’ :
+      ANNE
  Solomon...
- SOLOMON
+     SOLOMON
  Come, Anne. Jump. 
- ANNE
+      ANNE
  I will not ruin my dress. Catch me!
- SOLOMON
+     SOLOMON
  I will catch you, Anne. I will.
- ANNE
+     ANNE
  You will.
+
 Even though the conversation is not very thorough or meaningful, it is between two named 
 ethnic minority characters, and no white people are present in the scene. Therefore, the film
 will have the condition for all levels for the Black ethnicity. 
-19
+
 As can be seen the modified Bechdel test similar to the original requires the actors to be named. 
 Therefore, the first step of conducting the modified Bechdel test was to create a process which 
 removed ‘generic’ characters from the dataset. To filter generic characters from the dataset, I 
@@ -99,6 +105,7 @@ identified frequently occurring tokens, where a token is a segment of a name div
 I then removed characters which only included tokens within a stop word list. The stop word 
 list eventually contained 915 words, such as "doctor," "agent," and "the." The entire list can be 
 seen in Appendix A. 
+
 I made an exception to the character filter: I did not remove a character if the stop word was the 
 first token in their name for example "Colonel Rich Bron" and “Doctor Johnson” were
 characters kept. However, the addition to this exception was when the first token was the only 
@@ -109,24 +116,26 @@ the Bechdel test. However, film scripts can be changed during production, so the
 match the final film. Therefore, I decided to take a different approach and use subtitles for the 
 hearing impaired. Subtitles represent the final version of the film's dialogue, capturing it exactly 
 as it appears in the film. 
+
 By using the subtitles.org API I was able to find subtitles for the hearing impaired in a format 
 that could be standardized for testing. Each subtitle file was in an a strict formatted .srt file, 
 which has a unique identifier, precise start and end times, and one or two lines of text. As 
 illustration, the opening of the film "300: Rise of an Empire": 
-1
+           1
 00:00:38,363 --> 00:00:40,698
 (HORSE NICKERS)
-2
+           2
 00:01:02,654 --> 00:01:07,024
 QUEEN GORGO: The oracle's
 words stand as a warning.
-3
+           3
 00:01:07,026 --> 00:01:08,225
 A prophecy.
-4
+           4
 00:01:08,227 --> 00:01:11,796
 "Sparta will fall.
-20
+          20
+
 In these subtitle files, when it is unclear who is speaking, the person is identified and labeled 
 ("QUEEN GORGO"). To ascertain the individuals in the scenes, I employed the 
 en_core_web_md model from the spaCy Natural Language package, which can recognize 
@@ -142,7 +151,9 @@ revised Bechdel Test to this dataset. Films were classified based on whether the
 conditions (T1), (T2) and (T3) for different ethnicities. Films which hold the condition T3 
 directly hold the other conditions as well. These classification served as the independent 
 variables utilized in the regression models. 
+
 Covariates
+
 It is important to account for additional factors that have been identified as influencing a film’s 
 success, in doing so this study draws upon previous research. By controlling for the impact of 
 these variables, more accurate estimations can be derived for the variables under investigation. 
@@ -156,7 +167,7 @@ The measure for STARPOWERi is based on the measurement from Nelson and Glotfelty
 (2012), it is the four highest-grossing actors' ranking on the website The Numbers for one year 
 before the film. For DIRECTORPOWERi the directors' ranking on The Numbers is also used,
 also the year before the film. 
-21
+
 With regards to critical acclaim, the CRITICSi value is the average rating on metacritic.com. 
 Moreover, this research will use the actual number of awards NOMINATIONSi as a proxy for 
 award nomination. WINSi will also be added to the model to represent awards wins. Because 
@@ -179,6 +190,7 @@ Within this study the four seasons (SPRINGi, SUMMERi, FALLi, WINTERi) are encode
 the following. Spring[March, April, May] Summer [June, July, August] Fall [September, 
 October, November], Winter [December, January, February]. RUNTIMEi is included as the 
 actual numerical value in minutes, following.
+
 Furthermore, following Hofmann, Clement, Völckner, and Hennig-Thurau (2016), multiple 
 dummy variables were added to control for whether the film was {BASED ON}i a book, comic, 
 novel, short story, or TV series. Moreover, whether the film is a REMAKEi or SPINOFFi .
@@ -188,6 +200,7 @@ for potential variations over time, dummy variables YEARi were introduced for ea
 within the sample, enhancing the model's ability to control for temporal effects.
 
 Models study 1
+
 Following the approach outlined by Clement, Wu, and Fischer (2014), this research uses a loglog regression model. As such, all variables that are not dummy variables were log-transformed. 
 However, it is worth noting that numerous continuous variables had zero values, and taking the 
 logarithm of '0' would result in an error. To address this, a small constant value of '1’ was added 
@@ -219,13 +232,16 @@ log(LTAEi) = β0 + β1 × ASIANT1i + β2 × BLACKT1i +
 β60 × YEAR2015i + β61 × YEAR2016i + β62 × YEAR2017i + β63 × YEAR2018i + β64 × YEAR2019i + εi
 
 Model T2:
+
 log(LTAEi) = β0 + β1 × ASIANT2i + β2 × BLACKT2i + β3 × HISPANICT2i + 
 β4 × log(DIRECTORPOWERi) + … β60 × YEAR2015i + β61 × YEAR2016i + β62 × YEAR2017i + β63 × 
 YEAR2018i + β64 × YEAR2019i + εi
 Model T3: 
+
 log(LTAEi) = β0 + β1 × ASIANT3i + β2 × BLACKT3i + β3 × HISPANICT3i + 
 β4 × log(DIRECTORPOWERi) + … β60 × YEAR2015i + β61 × YEAR2016i + β62 × YEAR2017i + β63 × 
 YEAR2018i + β64 × YEAR2019i + εi
+
 In these models, LTAEi represents the Long-term Audience Engagement for film i. ASIANT , 
 BLACKT and HISPANICT represent the Authenticity and Inclusiveness, identification, of 
 Hispanic, Black, and Asian representation in film i. The other variables are the control variables. 
