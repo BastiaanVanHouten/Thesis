@@ -232,3 +232,37 @@ YEAR2018i + β64 × YEAR2019i + εi
 In these models, LTAEi represents the Long-term Audience Engagement for film i. ASIANT , 
 BLACKT and HISPANICT represent the Authenticity and Inclusiveness, identification, of 
 Hispanic, Black, and Asian representation in film i. The other variables are the control variables. 
+
+Research Methodology 2
+
+The research methodology of Study 2 closely mirrors that of Study 1. As previously mentioned, 
+the #OscarsSoWhite movement was selected as a reference point for this study. To capture the 
+temporal dynamics, a step dummy variable, After_Jan_2015, was generated. Films released in 
+or after 2015 were assigned a value of one, indicating the period when Racial Representation 
+gained heightened cultural significance. The assumption, supported by continued emphasis on 
+belonging and community in 2020 (Neufeld, 2020), and findings by Lazar et al. (2021), is that 
+this period of cultural significance extended at least from 2015 to 2019. This assumption 
+obviated the necessity to explicitly model a moment when Racial Representation ceased to be 
+a prominent cultural topic.
+
+Models
+
+To investigate the potential moderating effect of an external factor on the relationship between 
+Racial Authentic Inclusive Representation and Long-term Audience Engagement the 
+interaction term after_jan_2015 was incorporated into the three T1, T2, and T3 models. For 
+example, the T1 model: 
+
+log(LTAEi) = β0 + β1 × ASIANT1i + β2 × BLACKT1i + β3 × HISPANICT1i + β4 
+×FILMSAFTERJAN2015i* ASIANT1i + β5×FILMSAFTERJAN2015i* BLACKT1i + β6 × 
+FILMSAFTERJAN2015i * HISPANICT1i + {Control Variables} + εi
+
+In this model, LTAE similar to the previous study represents the Long-term Audience 
+Engagement for film i, FILMSAFTERJAN2015 is a dummy variable that takes a value of 1 if 
+the film was released in or after February 2015. The interaction terms FILMSAFTERJAN2015i
+× ASIANT1i, FILMSAFTERJAN2015i * BLACKT1i and FILMSAFTERJAN2015i * 
+HISPANICT1i allow to capture whether the effect of Racial Authentic Inclusive Representation 
+on Long-term Audience Engagement differs before and after January 2015.
+
+What needs to be noted is that while the interaction terms are included in the model, the main 
+effect of the dummy variable of after January 2015 is not included. This is because it would 
+have multicollinearity issues with the year dummies incorporated as control variables.
