@@ -158,6 +158,7 @@ award nomination. WINSi will also be added to the model to represent awards wins
 there is an abundance of available film awards this study uses the awards mentioned on the 
 website of IMDB which makes it very easy and accessible to account for a vast amount of 
 awards internationally and nationally. 
+
 MPAAi rating is given by the Motion Picture Association of America and is used to rate a film's 
 suitability for certain audiences based on its content. These ratings are encoded as an interval 
 variable as [0 = unrated; 1 = G; 2 = PG; 3 = PG-13; 4 = R;5 = C-17]. SCREENSi is the amount 
@@ -166,6 +167,7 @@ production budget available at one of the three data sources used (IMDB, The Num
 TMDB), if multiple production budgets were available across the sources the average was 
 taken. In this study, SEQUELi indicates where the film is a sequel. It is a dummy variable, 
 which takes the value one if the film is a sequel. 
+
 Moreover, this study introduced 19 genres through dummy variables: Action, Adventure, 
 Comedy, Crime, Drama, Family, Fantasy, Horror, Romance, Musical, Sci-Fi, Mystery, Thriller, 
 Western, Biography, Documentary, History, Music, Sport and War. Because a film could have 
@@ -194,6 +196,7 @@ value was first multiplied by one hundred before the number was added, assuring 
 integer added did not have too much effect on the value. Because Racial Authentic Inclusive 
 Representation provides different levels, models were made for all three levels with the 
 ethnicity conditions as independent variables. 
+
 Model T1 :
 log(LTAEi) = β0 + β1 × ASIANT1i + β2 × BLACKT1i + 
 β3 × HISPANICT1i + β4 × log(DIRECTORPOWERi) +
